@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iTwinkle Show Studio</title>
+<style>
+:root{--bg:#0d1512;--panel:#15211c;--panel2:#1c2b25;--line:#2a3d35;--ink:#e8efe9;--mute:#8fa59a;--accent:#e2b44b;--red:#e05a4f;--green:#4fbf7a;--blue:#5aa0e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;letter-spacing:.3px}
+header h1 span{color:var(--accent)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block;margin-right:6px}
+.dot.on{background:var(--green)}
+#status{color:var(--mute)}
+.spacer{flex:1}
+button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#1b1405;border-color:var(--accent);font-weight:600}
+button.danger{border-color:#6b2c27}
+button:disabled{opacity:.45;cursor:default}
+nav{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid var(--line)}
+nav button{border-radius:8px 8px 0 0;border-bottom:none;background:transparent;color:var(--mute)}
+nav button.active{background:var(--panel);color:var(--ink);border-color:var(--line)}
+main{padding:18px;max-width:1200px}
+section{display:none}section.active{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.fx{text-align:left;padding:8px 10px;position:relative}
+.fx small{display:block;color:var(--mute);font-size:11px;font-family:ui-monospace,Consolas,monospace}
+.fx .key{position:absolute;right:6px;top:5px;font-size:10px;color:var(--accent)}
+.fx.sel{outline:2px solid var(--accent)}
+label{color:var(--mute)}
+input[type=range]{accent-color:var(--accent)}
+input[type=text],input[type=number],select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
+.mono{font-family:ui-monospace,Consolas,monospace}
+.muted{color:var(--mute)}
+.note{color:var(--mute);font-size:13px}
+.warn{background:#3a2b12;border:1px solid #6b5220;color:#f3d79a;border-radius:8px;padding:10px 12px;margin-bottom:14px}
+#log{height:150px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:12px ui-monospace,Consolas,monospace;color:var(--mute)}
+.songs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.song{display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+.song.playing{border-color:var(--accent)}
+.song .t{color:var(--mute);font-size:12px}
+.player{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar{flex:1;min-width:200px;height:8px;background:var(--bg);border-radius:4px;position:relative;cursor:pointer}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:14px}.layout>*{min-width:0}
+@media(max-width:860px){.layout{grid-template-columns:1fr}}
+#treeBox{display:flex;flex-direction:column;align-items:center;gap:6px}
+#treeLabel{font-size:12px;color:var(--mute);text-align:center;min-height:34px}
+#waveWrap{overflow-x:auto;max-width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;position:relative}
+#wave{display:block;cursor:crosshair}
+table{border-collapse:collapse;width:100%}
+td,th{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+th{color:var(--mute);font-weight:500}
+tr.sel td{background:#2a3a24}
+#cueTable{max-height:300px;overflow:auto}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:5px;border:1px solid #0006}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>iTwinkle <span>Show Studio</span></h1>
+  <span><span class="dot" id="dot"></span><span id="status">Not connected</span></span>
+  <div class="spacer"></div>
+  <button class="primary" id="btnConnect">Connect tree</button>
+  <button id="btnDisconnect" disabled>Disconnect</button>
+</header>
+<nav id="tabs">
+  <button data-tab="control" class="active">Control</button>
+  <button data-tab="shows">Built-in shows</button>
+  <button data-tab="editor">Show editor</button>
+  <button data-tab="live">Music reactive</button>
+  <button data-tab="raw">Protocol &amp; log</button>
+</nav>
+<main>
+<div class="warn" id="noSerial" style="display:none">This browser can't open serial ports. Open this file in <b>Chrome</b> or <b>Edge</b> on your PC (the tree is paired there as COM5).</div>
+
+<!-- CONTROL -->
+<section id="control" class="active">
+  <div class="card">
+    <h2>Solid color</h2>
+    <div class="row">
+      <input type="color" id="color" value="#ff2000">
+      <button id="btnColor">Send color</button>
+      <label><input type="checkbox" id="saveColor"> Save as tree's default</label>
+      <span class="note">The tree uses 16 levels per channel, so colors are rounded.</span>
+    </div>
+    <div class="row" style="margin-top:10px" id="quickColors"></div>
+  </div>
+  <div class="card">
+    <h2>Brightness</h2>
+    <div class="row"><input type="range" id="dim" min="1" max="100" value="100" style="width:260px"><span id="dimVal" class="mono">100</span>
+    <span class="note">Saved to the tree when you let go.</span></div>
+  </div>
+  <div class="card">
+    <h2>Effects</h2>
+    <p class="note">These are the effects built into the tree. The names are placeholders — double-click any button to rename it after you've seen what it does. The ones marked ★ are the effects your tree model (00680 Audio Tree) uses in its app; the rest were for other GE models and may or may not work on yours.</p>
+    <div class="grid" id="fxGrid"></div>
+  </div>
+</section>
+
+<!-- SHOWS -->
+<section id="shows">
+  <div class="card">
+    <h2>Songs</h2>
+    <p class="note">Load the <b>iTwinkle APK file</b> (the one you sent me) to pull out the 7 Audio Tree songs, or pick the MP3s directly. Nothing is uploaded — it all stays in this page. Music plays from this computer's speakers (or a Bluetooth speaker paired to the PC), and the lights follow the original app's timing.</p>
+    <div class="row">
+      <label class="primary"><input type="file" id="apkFile" accept=".apk,.zip" hidden><button class="primary" onclick="document.getElementById('apkFile').click()">Load iTwinkle APK…</button></label>
+      <input type="file" id="mp3Files" accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg,.opus" multiple hidden><button onclick="document.getElementById('mp3Files').click()">Or pick MP3 files…</button>
+      <span id="songMsg" class="note"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2 style="display:flex;align-items:center;gap:10px">Built-in shows <button id="plBuiltin" style="font-size:12px;text-transform:none;letter-spacing:0">▶ Play all</button><button id="plAll" style="font-size:12px;text-transform:none;letter-spacing:0">▶ Play everything</button></h2>
+    <div class="songs" id="songList"></div>
+  </div>
+  <div class="card">
+    <h2 style="display:flex;align-items:center;gap:10px">My shows <button id="plMine" style="font-size:12px;text-transform:none;letter-spacing:0">▶ Play all</button></h2>
+    <p class="note">Shows you save in the Show editor appear here and play just like the built-in ones. Songs are kept in this browser on this computer, so you don't need to load them again next time.</p>
+    <div class="songs" id="myList"></div>
+  </div>
+  <div class="card">
+    <h2>Player</h2>
+    <div class="player">
+      <button id="pPrev" disabled title="Previous show">⏮</button><button id="pPlay" disabled>▶ Play</button><button id="pNext" disabled title="Next show">⏭</button><button id="pStop" disabled>■ Stop</button>
+      <label><input type="checkbox" id="pRepeat"> Repeat</label><label><input type="checkbox" id="pShuffle"> Shuffle</label>
+      <span id="pName" class="muted">Nothing playing</span>
+      <div class="bar" id="pBar"><i id="pFill"></i></div>
+      <span id="pTime" class="mono">0:00 / 0:00</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label>Light lead (ms) <input type="range" id="lead" min="-300" max="600" step="10" value="120"></label><span id="leadVal" class="mono">120</span>
+      <span class="note">Bluetooth adds delay. If the lights look late, raise this; if early, lower it.</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label><input type="checkbox" id="keepAwake" checked> Keep the Bluetooth link awake</label>
+      <label>Wake-up delay before each song <input type="range" id="wake" min="0" max="5000" step="250" value="0"></label><span id="wakeVal" class="mono">0 s</span>
+      <span class="note">If the lights still take a few seconds to start, add a delay here: the tree gets woken up first, then the music starts.</span>
+    </div>
+  </div>
+</section>
+
+<!-- EDITOR -->
+<section id="editor">
+  <div class="card">
+    <h2>1 · Song &amp; starting point</h2>
+    <div class="row">
+      <select id="eSong"><option value="">— choose a song —</option></select>
+      <input type="file" id="eFile" accept="audio/*,.mp3,.flac,.wav,.m4a,.aac,.ogg,.opus" hidden><button onclick="document.getElementById('eFile').click()">Use another audio file…</button>
+      <select id="eStart">
+        <option value="blank">Start blank</option>
+        <option value="builtin">Copy the built-in show (if any)</option>
+        <option value="auto">Auto-choreograph from the music</option>
+      </select>
+      <button class="primary" id="eLoad">Load into editor</button>
+      <button id="eClearSong" title="Empty the editor. The song stays saved and can be picked again.">Clear song</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>Saved shows</label><select id="eSaved"><option value="">—</option></select>
+      <button id="eOpen">Open</button><button id="eImport">Import file…</button><input type="file" id="eImportFile" accept=".json" hidden>
+    </div>
+  </div>
+
+  <div class="card" id="autoCard">
+    <h2>Auto-choreographer</h2>
+    <p class="note">Listens to the whole song and finds every peak — each note hit and every jump in volume — plus every drop. Peaks get an effect fired right on the hit (busier sections get more of them), the biggest moments in the song get the accent and a full-brightness flash, and the tree's brightness follows the music: it swells with the music and dims the moment the volume falls. Effects change with the song's sections, and repeated sections get the same look. <b>Classic</b> works like GE's own shows instead: one effect retriggered in time with the melody for a run of about 8 hits, then the next effect, with an occasional flash between runs and no brightness changes.</p>
+    <div class="row">
+      <label>Style <select id="aStyle"><option value="0">Calm</option><option value="1" selected>Balanced</option><option value="2">Energetic</option><option value="3">Classic (like the built-in shows)</option></select></label>
+      <label><input type="checkbox" id="aBright" checked> Brightness follows the music</label>
+      <label><input type="checkbox" id="aAccent" checked> Accents on big hits</label>
+      <label><input type="checkbox" id="aRepeat" checked> Repeated sections get the same look</label>
+    </div>
+    <div class="row" style="margin-top:10px"><label>Effects it may use:</label><span id="aFx" class="row" style="gap:6px"></span></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="aGen" disabled>Generate show</button>
+      <button id="aVar" disabled>Try another variation</button>
+      <span id="aInfo" class="note">Load a song into the editor first.</span>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <h2>2 · Timeline</h2>
+        <div class="row" style="margin-bottom:8px">
+          <button id="ePlay" disabled>▶ Play</button>
+          <button id="eRec" disabled>● Record taps</button>
+          <span id="eTime" class="mono">0:00.0</span>
+          <label>Zoom <input type="range" id="eZoom" min="20" max="400" value="80"></label>
+          <label><input type="checkbox" id="eSend" checked> Send to tree while playing</label>
+        </div>
+        <div id="waveWrap"><canvas id="wave" height="150"></canvas></div>
+        <p class="note">The colored strip along the bottom shows the sections it found: blue = calm, green = gentle, yellow = steady, orange = driving, red = peak. Click the timeline to move the playhead. Click a marker to select it; drag to move it. While <b>recording</b>, press the keys shown on the effect palette in time with the music — each press drops a cue. <kbd>Space</kbd> play/pause · <kbd>Del</kbd> delete selected cue.</p>
+      </div>
+      <div class="card">
+        <h2>3 · Effect palette</h2>
+        <div class="row" style="margin-bottom:8px"><label>Cue color (for color cues)</label><input type="color" id="eColor" value="#ff0000">
+          <button id="eAddAt" disabled>+ Add selected effect at playhead</button></div>
+        <div class="grid" id="palGrid"></div>
+      </div>
+      <div class="card">
+        <h2>Cues</h2>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="eName" placeholder="Show name" style="width:220px">
+          <button class="primary" id="eSave" disabled>Save show</button>
+          <button id="eExport" disabled>Export file</button>
+          <button id="eClear" class="danger" disabled>Clear all cues</button>
+          <span id="eCount" class="note"></span>
+        </div>
+        <div id="cueTable"><table><thead><tr><th>Time</th><th>Effect</th><th>Bytes</th><th></th></tr></thead><tbody id="cueBody"></tbody></table></div>
+      </div>
+    </div>
+    <div class="card" id="treeBox">
+      <h2>Preview</h2>
+      <svg id="treeSvg" width="170" height="230" viewBox="0 0 170 230"></svg>
+      <div id="treeLabel">—</div>
+      <p class="note" style="text-align:center">A stand-in for the tree: it shows the current color and effect, not the exact animation.</p>
+    </div>
+  </div>
+</section>
+
+<!-- LIVE -->
+<section id="live">
+  <div class="card">
+    <h2>Flash with music</h2>
+    <p class="note">Listens to the microphone (or a song playing in this page) and fires effects on the beat, like the app's music mode.</p>
+    <div class="row">
+      <button class="primary" id="lMic">Start with microphone</button>
+      <button id="lStop" disabled>Stop</button>
+      <label>Sensitivity <input type="range" id="lSens" min="1" max="20" value="8"></label>
+      <label>Min gap (ms) <input type="number" id="lGap" value="300" min="80" step="20" style="width:80px"></label>
+    </div>
+    <div class="row" style="margin-top:10px"><label>On each beat:</label>
+      <select id="lMode"><option value="fx">Cycle effects</option><option value="color">Cycle colors</option><option value="both">Both</option></select>
+    </div>
+    <canvas id="lMeter" width="600" height="60" style="margin-top:10px;width:100%;max-width:600px;background:var(--bg);border-radius:6px"></canvas>
+  </div>
+</section>
+
+<!-- RAW -->
+<section id="raw">
+  <div class="card">
+    <h2>Send raw bytes</h2>
+    <div class="row"><input type="text" id="rawHex" class="mono" value="FF 28 FE 00 00 0F 00 00 00 00" style="width:340px"><button id="rawSend">Send</button></div>
+    <p class="note">Every command is 10 bytes starting with <span class="mono">FF</span>. Byte 2 is the command; the rest are parameters. Colors are 0–F per channel in <b>B G R</b> order.</p>
+  </div>
+  <div class="card">
+    <h2>Protocol (decoded from the Android app)</h2>
+    <table class="mono">
+      <tr><th>Bytes</th><th>Meaning</th></tr>
+      <tr><td>FF 28 FE B G R 00 00 00 00</td><td>Solid color, not saved (B/G/R = 0–F)</td></tr>
+      <tr><td>FF 18 FE B G R 00 00 00 00</td><td>Solid color, saved as default</td></tr>
+      <tr><td>FF 04 LL SS 00 …</td><td>Brightness LL (1–100); SS=01 preview, 00 save</td></tr>
+      <tr><td>FF 10 … FF 1E, FF 30</td><td>Built-in effects (param in byte 3 on some)</td></tr>
+      <tr><td>FF 21 … FF 27</td><td>Patterns</td></tr>
+      <tr><td>FF 01 DD B G R …</td><td>Pop color (other models)</td></tr>
+      <tr><td>FF 03 CC B G R / FF 05 RR B G R</td><td>Column / row effects (other models)</td></tr>
+    </table>
+    <p class="note">Connection: Bluetooth Classic serial (SPP). Built-in shows: the app plays the MP3 and sends a cue whenever playback is within 100 ms of a table entry.</p>
+  </div>
+  <div class="card"><h2>Log</h2><div id="log"></div></div>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ===== Auto-choreographer: music analysis + show generation ===== */
+const AUTO = (() => {
+  const SR = 22050, N = 1024, HOP = 220, FPS = SR / HOP, NB = 24;
+
+  function fft(re, im) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < n; i += len) {
+        let cr = 1, ci = 0;
+        for (let j = 0; j < len / 2; j++) {
+          const a = i + j, b = a + len / 2, tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+          const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+        }
+      }
+    }
+  }
+  const mean = (a, s = 0, e = a.length) => { let t = 0; for (let i = s; i < e; i++) t += a[i]; return t / Math.max(1, e - s); };
+  const pct = (a, p) => { const s = Array.from(a).sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.max(0, Math.floor(p * (s.length - 1))))]; };
+  const tick = () => new Promise(r => setTimeout(r, 0));
+
+  async function analyze(buffer, progress = () => { }, cfg = (typeof window !== 'undefined' && window.__autoCfg) || {}) {
+    // 1) mono 22.05 kHz
+    const oac = new OfflineAudioContext(1, Math.ceil(buffer.duration * SR), SR);
+    const src = oac.createBufferSource(); src.buffer = buffer; src.connect(oac.destination); src.start();
+    const x = (await oac.startRendering()).getChannelData(0);
+    const nF = Math.max(1, Math.floor((x.length - N) / HOP));
+    // 2) spectral features
+    const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    const edges = []; for (let i = 0; i <= NB; i++) edges.push(Math.max(1, Math.round(40 * Math.pow(10000 / 40, i / NB) / SR * N)));
+    const bands = new Float32Array(nF * NB), rms = new Float32Array(nF), flux = new Float32Array(nF), lowFlux = new Float32Array(nF);
+    const re = new Float32Array(N), im = new Float32Array(N), prev = new Float32Array(NB);
+    for (let f = 0; f < nF; f++) {
+      const o = f * HOP; let e = 0;
+      for (let i = 0; i < N; i++) { const v = x[o + i]; re[i] = v * win[i]; im[i] = 0; e += v * v; }
+      rms[f] = Math.sqrt(e / N);
+      fft(re, im);
+      let fl = 0, lf = 0;
+      for (let b = 0; b < NB; b++) {
+        let s = 0; for (let k = edges[b]; k < Math.max(edges[b] + 1, edges[b + 1]); k++) s += re[k] * re[k] + im[k] * im[k];
+        const lg = Math.log(1 + 100 * s); bands[f * NB + b] = lg;
+        const d = lg - prev[b]; if (d > 0) { fl += d; if (b < 6) lf += d; } prev[b] = lg;
+      }
+      flux[f] = fl; lowFlux[f] = lf;
+      if (f % 1500 === 0) { progress(0.1 + 0.6 * f / nF); await tick(); }
+    }
+    // 3) onset envelope (local-mean removed)
+    const env = new Float32Array(nF);
+    { const W = 25; let acc = 0; for (let i = 0; i < nF; i++) { acc += flux[i]; if (i >= 2 * W) acc -= flux[i - 2 * W]; } }
+    for (let i = 0; i < nF; i++) { const lo = Math.max(0, i - 25), hi = Math.min(nF, i + 25); env[i] = Math.max(0, flux[i] - mean(flux, lo, hi)); }
+    const envStd = Math.sqrt(mean(env.map(v => v * v))) || 1; for (let i = 0; i < nF; i++) env[i] /= envStd;
+    progress(0.75); await tick();
+    // 4) tempo candidates from autocorrelation (with harmonic support)
+    const acRaw = new Float32Array(Math.ceil(FPS * 60 / 30) * 4 + 8);
+    for (let L = 1; L < acRaw.length && L < nF; L++) { let s = 0; for (let i = 0; i + L < nF; i++) s += env[i] * env[i + L]; acRaw[L] = s / (nF - L); }
+    const acAt = L => { const i = Math.floor(L), f = L - i; return i + 1 < acRaw.length ? acRaw[i] * (1 - f) + acRaw[i + 1] * f : 0; };
+    const acPeak = L => Math.max(acAt(L - 1), acAt(L), acAt(L + 1));
+    const minL = Math.floor(FPS * 60 / 200), maxL = Math.ceil(FPS * 60 / 55), sc = [];
+    for (let L = minL; L <= maxL; L++) sc[L] = acAt(L) + 0.5 * acPeak(2 * L) + 0.25 * Math.max(acPeak(3 * L), acPeak(4 * L));
+    let cands = []; for (let L = minL + 1; L < maxL; L++) if (sc[L] >= sc[L - 1] && sc[L] >= sc[L + 1]) cands.push(L);
+    cands.sort((p, q) => sc[q] - sc[p]); cands = cands.slice(0, 5);
+    // 5) dynamic-programming beat tracking (Ellis 2007)
+    function track(P) {
+      const score = new Float32Array(nF), back = new Int32Array(nF).fill(-1), alpha = cfg.alpha || 120, lo = Math.round(P / 2), hi = Math.round(2 * P);
+      for (let t = 0; t < nF; t++) {
+        let best = -1e9, bi = -1;
+        for (let p = Math.max(0, t - hi); p <= t - lo; p++) { const v = score[p] - alpha * Math.pow(Math.log((t - p) / P), 2); if (v > best) { best = v; bi = p; } }
+        if (bi >= 0 && best > 0) { score[t] = env[t] + best; back[t] = bi; } else score[t] = env[t];
+      }
+      let t = 0, mx = -1; for (let i = Math.max(0, nF - Math.round(P)); i < nF; i++) if (score[i] > mx) { mx = score[i]; t = i; }
+      const out = []; while (t >= 0) { out.push(t); t = back[t]; } return out.reverse();
+    }
+    let P = cands[0] || 50, bestV = -1;
+    for (const L of cands) { const bpmL = 60 * FPS / L, prior = Math.exp(-0.5 * Math.pow(Math.log2(bpmL / 110) / 1.0, 2)); if (sc[L] * prior > bestV) { bestV = sc[L] * prior; P = L; } }
+    { const a = sc[P - 1] || 0, b = sc[P], c = sc[P + 1] || 0, d = a - 2 * b + c; if (d < 0) P = P + 0.5 * (a - c) / d; }
+    // waltz check: if the strongest period is a slow bar that splits best into three, the beat is a third of it
+    let forcedMeter = 0;
+    { const T = cands.slice().sort((p, q) => sc[q] - sc[p])[0];
+      if (T && 60 * FPS / T < 75) { const d2 = acPeak(T / 2), d3 = acPeak(T / 3), d4 = acPeak(T / 4); if (d3 > d2 && d3 > d4) { P = T / 3; forcedMeter = 3; } } }
+    let beatF = track(P);
+    // refine the period from the tracked beats, then track once more
+    if (cfg.refine !== false) { const d = []; for (let i = 1; i < beatF.length; i++) d.push(beatF[i] - beatF[i - 1]); const md = pct(d, 0.5); const good = d.filter(x => Math.abs(x - md) < md * 0.2); if (good.length > 8) P = good.reduce((a, b) => a + b, 0) / good.length; beatF = track(P); }
+    const bpm = 60 * FPS / P;
+    // loudness per frame (dB) and trimming of silent ends
+    const db = rms.map(v => 20 * Math.log10(v + 1e-6)); const dbMax = pct(db, 0.98);
+    beatF = beatF.filter(f => { const lo = Math.max(0, f - 20), hi = Math.min(nF, f + 20); return mean(db, lo, hi) > dbMax - 38; });
+    // fill gaps the tracker skipped (holds/fermatas) so the grid stays continuous
+    const filled = []; for (let i = 0; i < beatF.length; i++) { filled.push(beatF[i]); if (i + 1 < beatF.length) { const g = beatF[i + 1] - beatF[i], k = Math.round(g / P); for (let j = 1; j < k; j++) filled.push(Math.round(beatF[i] + g * j / k)); } }
+    beatF = filled;
+    progress(0.85); await tick();
+    // 6) onsets (note events): adaptive to the local level so soft passages count too
+    const onsets = [];
+    for (let i = 2; i < nF - 2; i++) {
+      if (env[i] < env[i - 1] || env[i] < env[i + 1] || env[i] < env[i - 2] || env[i] < env[i + 2]) continue;
+      const lo = Math.max(0, i - 30), hi = Math.min(nF, i + 30), m = mean(env, lo, hi);
+      if (env[i] > 0.05 && env[i] > m * 1.6 && db[i] > dbMax - 45) {
+        let before = 0, after = -200, nb = 0; for (let k = Math.max(0, i - 8); k < Math.max(1, i - 2); k++) { before += db[k]; nb++; } before /= Math.max(1, nb);
+        for (let k = i; k < Math.min(nF, i + 6); k++) after = Math.max(after, db[k]);
+        const jump = Math.max(0, after - before);
+        const o = { f: i, s: env[i] * (1 + jump / 6), low: lowFlux[i], jump };
+        if (onsets.length && i - onsets[onsets.length - 1].f < 10) { if (env[i] > onsets[onsets.length - 1].s) onsets[onsets.length - 1] = o; } else onsets.push(o);
+      }
+    }
+    // volume peaks: any 6 dB rise within 150 ms is an event, even without a sharp attack
+    { const dbs = new Float32Array(nF); for (let i = 1; i < nF - 1; i++) dbs[i] = (db[i - 1] + db[i] + db[i + 1]) / 3;
+      let lastV = -99;
+      for (let i = 15; i < nF - 5; i++) {
+        let isMax = true; for (let k = i - 5; k <= i + 5; k++) if (dbs[k] > dbs[i]) { isMax = false; break; }
+        if (!isMax || i - lastV < 12 || dbs[i] < dbMax - 40) continue;
+        let mn = 1e9; for (let k = i - 15; k < i; k++) mn = Math.min(mn, dbs[k]);
+        const jump = dbs[i] - mn; if (jump < 6) continue;
+        lastV = i; let j = i; while (j > i - 15 && dbs[j] - dbs[j - 1] > 0.3) j--;
+        const near = onsets.find(o => Math.abs(o.f - j) <= 8);
+        if (near) { near.jump = Math.max(near.jump || 0, jump); near.s = Math.max(near.s, env[near.f] * (1 + jump / 6)); }
+        else { let e = 0; for (let k = j - 3; k <= j + 3; k++) e = Math.max(e, env[k] || 0); onsets.push({ f: j, s: Math.max(e, 0.3) * (1 + jump / 6), low: lowFlux[j], jump }); }
+      }
+      onsets.sort((a, b) => a.f - b.f); }
+    // loudness envelope at 20 fps (150 ms smoothing) for peaks, swells and drops
+    const envFps = 20, step20 = Math.round(FPS / envFps), env20 = [];
+    for (let f = 0; f < nF; f += step20) { let p = 0, c = 0; for (let k = Math.max(0, f - 7); k < Math.min(nF, f + 8); k++) { p += rms[k] * rms[k]; c++; } env20.push(10 * Math.log10(p / Math.max(1, c) + 1e-12)); }
+    // 7) per-beat features
+    const nBeats = beatF.length, bLoud = new Float32Array(nBeats), bAct = new Float32Array(nBeats), bVec = [];
+    for (let i = 0; i < nBeats; i++) {
+      const s = beatF[i], e = i + 1 < nBeats ? beatF[i + 1] : Math.min(nF, s + Math.round(P));
+      let p = 0; for (let f = s; f < e; f++) p += rms[f] * rms[f]; bLoud[i] = 10 * Math.log10(p / Math.max(1, e - s) + 1e-12);
+      bAct[i] = Math.max(env[s] || 0, env[s + 1] || 0, env[s - 1] || 0);
+      const v = new Float32Array(NB); for (let f = s; f < e; f++) for (let b = 0; b < NB; b++) v[b] += bands[f * NB + b]; for (let b = 0; b < NB; b++) v[b] /= Math.max(1, e - s); bVec.push(v);
+    }
+    // meter: does the bass/onset pattern repeat every 3 beats or every 4?
+    const bassSeq = beatF.map(f => lowFlux[f] + (lowFlux[f + 1] || 0) + 0.5 * (env[f] || 0));
+    const corr = k => { const n = bassSeq.length - k; if (n < 8) return 0; const m = mean(bassSeq); let s = 0, a = 0, b = 0; for (let i = 0; i < n; i++) { const x = bassSeq[i] - m, y = bassSeq[i + k] - m; s += x * y; a += x * x; b += y * y; } return s / (Math.sqrt(a * b) || 1); };
+    const c3 = corr(3) + corr(6), c4 = corr(4) + corr(8), c2 = corr(2);
+    const meter = forcedMeter || (c3 > c4 + 0.05 && c3 > c2 * 1.2 ? 3 : 4);
+    // downbeat phase: where the low-frequency hits land
+    let phase = 0, bestPh = -1; for (let ph = 0; ph < meter; ph++) { let s = 0; for (let i = ph; i < nBeats; i += meter) s += lowFlux[beatF[i]] + lowFlux[beatF[i] + 1 || 0]; if (s > bestPh) { bestPh = s; phase = ph; } }
+    // smoothed, normalized loudness 0..1
+    const sm = new Float32Array(nBeats); for (let i = 0; i < nBeats; i++) sm[i] = mean(bLoud, Math.max(0, i - 2), Math.min(nBeats, i + 3));
+    const lo10 = pct(sm, 0.08), hi95 = pct(sm, 0.95); const loud = sm.map(v => Math.max(0, Math.min(1, (v - lo10) / Math.max(1, hi95 - lo10))));
+    // 8) section boundaries: timbre self-similarity novelty + loudness jumps
+    const z = bVec.map(v => v.slice()); for (let b = 0; b < NB; b++) { let m = 0, s = 0; z.forEach(v => m += v[b]); m /= nBeats || 1; z.forEach(v => s += (v[b] - m) ** 2); s = Math.sqrt(s / (nBeats || 1)) || 1; z.forEach(v => v[b] = (v[b] - m) / s); }
+    const cos = (a, b) => { let d = 0, na = 0, nb = 0; for (let k = 0; k < NB; k++) { d += a[k] * b[k]; na += a[k] * a[k]; nb += b[k] * b[k]; } return d / (Math.sqrt(na * nb) || 1); };
+    const K = 8, nov = new Float32Array(nBeats);
+    for (let i = K; i < nBeats - K; i++) {
+      let s = 0; for (let a = -K; a < K; a++) for (let b = -K; b < K; b++) { const sign = (a < 0) === (b < 0) ? 1 : -1, w = Math.exp(-((a + .5) ** 2 + (b + .5) ** 2) / (2 * (K / 2) ** 2)); s += sign * w * cos(z[i + a], z[i + b]); }
+      const jump = Math.abs(mean(loud, i, i + 4) - mean(loud, i - 4, i)); nov[i] = s + 6 * jump;
+    }
+    const nm = mean(nov), ns = Math.sqrt(mean(nov.map(v => (v - nm) ** 2))) || 1;
+    const peaks = []; for (let i = K; i < nBeats - K; i++) if (nov[i] >= nov[i - 1] && nov[i] >= nov[i + 1] && nov[i] > nm + 0.4 * ns) peaks.push(i);
+    peaks.sort((a, b) => nov[b] - nov[a]);
+    const bounds = [0];
+    for (const c of peaks) {
+      let s = c; const d = ((c - phase) % meter + meter) % meter; s = d <= meter / 2 ? c - d : c + (meter - d); // snap to bar line
+      if (s <= 0 || s >= nBeats - 8) continue;
+      if (bounds.every(b => Math.abs(b - s) >= Math.max(4 * meter, Math.ceil(8 / (P / FPS))))) bounds.push(s);
+    }
+    bounds.sort((a, b) => a - b);
+    const sections = bounds.map((b, i) => {
+      const e = i + 1 < bounds.length ? bounds[i + 1] : nBeats; let onsetsIn = 0;
+      const t0 = beatF[b] / FPS, t1 = e < nBeats ? beatF[e] / FPS : buffer.duration;
+      onsets.forEach(o => { if (o.f >= beatF[b] && (e >= nBeats || o.f < beatF[e])) onsetsIn++; });
+      const vec = new Float32Array(NB); for (let k = b; k < e; k++) for (let q = 0; q < NB; q++) vec[q] += z[k][q];
+      return { b0: b, b1: e, t0, t1, loud: mean(loud, b, e), density: onsetsIn / Math.max(0.5, t1 - t0), vec };
+    });
+    if (sections.length) { sections[0].t0 = 0; sections[sections.length - 1].t1 = buffer.duration; }
+    for (let i = 1; i < sections.length; i++) {
+      const S = sections[i]; let best = null;
+      onsets.forEach(o => { const t = o.f / FPS; if (Math.abs(t - S.t0) <= 0.6 && (!best || o.s > best.s)) best = o; });
+      if (best) { S.t0 = best.f / FPS; sections[i - 1].t1 = S.t0; }
+    }
+    const dens = sections.map(s => s.density), dHi = Math.max(...dens, 1);
+    sections.forEach(s => s.energy = 0.72 * s.loud + 0.28 * (s.density / dHi));
+    progress(1);
+    return { bpm, P, meter, beats: beatF.map(f => f / FPS), beatAct: Array.from(bAct), loud: Array.from(loud), phase, onsets: onsets.map(o => ({ t: o.f / FPS, s: o.s, low: o.low, jump: o.jump })), env20, envFps, sections, duration: buffer.duration, cos };
+  }
+
+  /* ---------- choreography ---------- */
+  const POOLS = {
+    slow: ["fx13b", "fx11", "fx17", "fx12", "fx15", "fx1b"],
+    mid: ["fx10", "fx1e3", "fx15", "fx1b", "fx12", "fx14"],
+    high: ["fx19", "fx16", "fx14", "fx10", "fx13c", "fx1e3"],
+    accent: ["fx30"]
+  };
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  function generate(A, opt) {
+    const { fx, frame, enabled = null, style = 1, brightness = true, accents = true, repeatLooks = true, seed = 1 } = opt;
+    const ok = id => (!enabled || enabled.includes(id)) && fx.find(f => f.id === id);
+    const pool = name => { let p = POOLS[name].filter(ok); if (!p.length) p = (enabled || POOLS.mid).filter(ok); return p; };
+    const R = rng(seed * 7919 + 13), cues = [];
+    if (!A.sections.length || !A.onsets.length) return { cues, levels: [] };
+    const shift = [-0.12, 0, 0.12][style];
+    const levelOf = e => { e += shift; return e < 0.22 ? 0 : e < 0.42 ? 1 : e < 0.62 ? 2 : e < 0.8 ? 3 : 4; };
+    const poolFor = L => L <= 1 ? "slow" : L === 2 ? "mid" : "high";
+    // tighter spacing for busier music; Calm/Energetic stretch or squeeze it
+    const minGap = [0.75, 0.5, 0.3, 0.2, 0.15].map(g => g * [1.6, 1, 0.75][style]);
+    const ons = A.onsets, allS = ons.map(o => o.s);
+    const localMed = (t, w) => { const a = []; for (const o of ons) { if (o.t > t + w) break; if (o.t >= t - w) a.push(o.s); } return a.length ? pct(a, 0.5) : 0; };
+    const bigS = pct(allS, 0.85), bigSet = new Set();
+    if (accents) {
+      const want = Math.max(2, Math.round(A.duration / 8));
+      ons.map(o => ({ o, r: o.s / (localMed(o.t, 4) || 1) })).filter(x => x.o.s >= bigS && x.r >= 1.6).sort((a, b) => b.r - a.r)
+        .forEach(x => { if (bigSet.size < want && [...bigSet].every(b => Math.abs(b.t - x.o.t) >= 3)) bigSet.add(x.o); });
+    }
+    const looks = []; const usage = {}; const levels = [];
+    let lastFx = null, prevLevel = -1;
+    const pickFx = (L, avoid) => {
+      const p = pool(poolFor(L)).filter(x => x !== avoid);
+      if (!p.length) return avoid;
+      const w = p.map(x => 1 / (1 + (usage[x] || 0))), tot = w.reduce((a, b) => a + b, 0); let r = R() * tot;
+      for (let q = 0; q < p.length; q++) { r -= w[q]; if (r <= 0) return p[q]; } return p[p.length - 1];
+    };
+    const beats = A.beats || [];
+    A.sections.forEach((S, si) => {
+      const L = levelOf(S.energy); levels.push(L);
+      let look = null;
+      if (repeatLooks) for (const lk of looks) if (lk.L === L && A.cos(lk.vec, S.vec) > 0.9) { look = lk; break; }
+      if (!look) { look = { L, vec: S.vec, seq: [] }; looks.push(look); }
+      // phrases: effect changes every few bars (about 4–8 s)
+      const M = A.meter || 4, barDur = M * 60 / (A.bpm || 120), phraseDur = Math.max(3.5, Math.min(9, (barDur < 1.3 ? 4 : 2) * barDur * (L === 0 ? 2 : 1)));
+      const phraseAt = t => Math.floor((t - S.t0) / phraseDur);
+      const fxFor = ph => { if (!look.seq[ph]) { look.seq[ph] = pickFx(L, lastFx); } usage[look.seq[ph]] = (usage[look.seq[ph]] || 0) + 1; return look.seq[ph]; };
+      // candidate peaks in this section
+      const cand = ons.filter(o => o.t >= S.t0 - 0.001 && o.t < S.t1);
+      // 1st pass: every standout peak (clearly louder than what's around it) is kept
+      const med = new Map(cand.map(o => [o, localMed(o.t, 3)]));
+      const chosen = [];
+      cand.filter(o => o.s >= 1.4 * med.get(o) || (o.jump || 0) >= 6 || (si === 0 && o === cand[0])).sort((a, b) => ((b.jump || 0) >= 6) - ((a.jump || 0) >= 6) || b.s - a.s).forEach(o => { if (chosen.every(c => Math.abs(c.t - o.t) >= 0.12)) chosen.push(o); });
+      // 2nd pass: fill in the rest of the notes, strongest first, at the density this section's energy calls for
+      const keepRatio = [0.9, 0.7, 0.5, 0.35, 0.25][L];
+      cand.filter(o => o.s >= keepRatio * med.get(o)).sort((a, b) => b.s - a.s).forEach(o => { if (chosen.every(c => Math.abs(c.t - o.t) >= minGap[L])) chosen.push(o); });
+      chosen.sort((a, b) => a.t - b.t);
+      // section lift → accent on the real hit that starts it
+      let liftT = -1;
+      if (accents && ok("fx30") && si > 0 && L > prevLevel) { const first = cand.slice(0, 6).sort((a, b) => b.s - a.s)[0]; const lt = first ? first.t : S.t0; if ([...bigSet].every(b => Math.abs(b.t - lt) >= 1.5)) { liftT = lt; cues.push({ t: liftT, b: frame(0x30), k: 3, big: true }); } }
+      let curPh = -1, curId = null;
+      chosen.forEach(o => {
+        if (Math.abs(o.t - liftT) < 0.12) return;
+        const ph = phraseAt(o.t); if (ph !== curPh) { curPh = ph; curId = fxFor(ph); lastFx = curId; }
+        const big = accents && ok("fx30") && bigSet.has(o);
+        cues.push(big ? { t: o.t, b: frame(0x30), k: 3, big: true } : { t: o.t, b: frame(...fx.find(f => f.id === curId).b), k: 1 });
+      });
+      // long held notes: if nothing has fired for a while, retrigger on the strongest real note in the gap
+      const maxGap = [4, 3, 2, 1.5, 1.2][L];
+      const times = [S.t0, ...chosen.map(c => c.t), S.t1];
+      for (let i = 0; i + 1 < times.length; i++) {
+        if (times[i + 1] - times[i] > maxGap) {
+          const gapOns = cand.filter(o => o.t > times[i] + 0.3 && o.t < times[i + 1] - 0.3).sort((a, b) => b.s - a.s);
+          if (gapOns.length) { const o = gapOns[0]; const id = fxFor(phraseAt(o.t)); cues.push({ t: o.t, b: frame(...fx.find(f => f.id === id).b), k: 1 }); }
+        }
+      }
+      prevLevel = L;
+    });
+    // brightness follows the loudness curve: up on swells, down on every real drop
+    if (brightness && A.env20) {
+      const e = A.env20, fpsE = A.envFps, W = 3, es = e.map((_, i) => { let p = 0, c = 0; for (let k = Math.max(0, i - W); k <= Math.min(e.length - 1, i + W); k++) { p += Math.pow(10, e[k] / 10); c++; } return 10 * Math.log10(p / c); });
+      const lo = pct(es, 0.12), hi = pct(es, 0.97), span = Math.max(6, hi - lo), floor = [20, 15, 10][style];
+      const lvl = d => { const x = Math.max(0, Math.min(1, (d - lo) / span)); return Math.round((floor + (100 - floor) * Math.pow(x, 0.85)) / 10) * 10; };
+      const startT = Math.max(0, A.onsets[0].t - 0.05);
+      let last = -1, lastT = -9; const br = [];
+      const emit = (t, v) => { br.push({ t: Math.max(0, t), b: frame(0x04, v, 1), k: 0 }); last = v; lastT = t; };
+      for (let i = 0; i < e.length; i++) {
+        const t = i / fpsE; if (t < startT) continue;
+        if (last < 0) { emit(startT, lvl(es[i])); continue; }
+        // a real drop: the raw level falls 6 dB from the last 0.4 s and stays down
+        let pk = -200; for (let k = Math.max(0, i - 8); k < i; k++) pk = Math.max(pk, e[k]);
+        let after = -200; for (let k = i; k < Math.min(e.length, i + 6); k++) after = Math.max(after, e[k]);
+        if (pk - e[i] >= 6 && after < pk - 4 && t - lastT >= 0.25) { const v = Math.min(last - 10, lvl(es[Math.min(es.length - 1, i + 4)])); if (v < last) { emit(t - 0.02, Math.max(floor, v)); continue; } }
+        const target = lvl(es[i]), d = Math.abs(target - last), dt = t - lastT;
+        if ((d >= 20 && dt >= 0.4) || (d >= 10 && dt >= 1.5)) emit(t - 0.03, target);
+      }
+      // accents flash to full, then settle back
+      cues.filter(c => c.big).forEach(c => { br.push({ t: Math.max(0, c.t - 0.02), b: frame(0x04, 100, 1), k: 0 }); const back = br.filter(x => x.t <= c.t).pop(); const v = back ? back.b[2] : 100; if (v < 100) br.push({ t: c.t + 0.45, b: frame(0x04, v, 1), k: 0 }); });
+      br.push({ t: Math.max(0, A.duration - 0.3), b: frame(0x04, 100, 1), k: 0 });
+      cues.push(...br);
+    }
+    // tidy: one light cue per 120 ms (accents win); brightness cues at most every 150 ms
+    cues.sort((a, b) => a.t - b.t);
+    const out = []; let lastLight = null, lastBr = -9;
+    for (const c of cues) {
+      if (c.k === 0) { if (c.t - lastBr >= 0.15 || c.b[2] === 100) { out.push(c); lastBr = c.t; } continue; }
+      if (lastLight && c.t - lastLight.t < 0.12) { if (c.k > lastLight.k) { out[out.indexOf(lastLight)] = c; lastLight = c; } continue; }
+      out.push(c); lastLight = c;
+    }
+    return { cues: out.map(c => ({ t: Math.round(c.t * 1000) / 1000, b: c.b })), levels };
+  }
+
+  /* ---------- Classic: the way GE's designers built the factory shows ---------- */
+  function generateClassic(A, opt) {
+    const { fx, frame, enabled = null, accents = true, repeatLooks = true, seed = 1 } = opt;
+    const P = Object.assign({ thr: [0.2, 0.42, 0.62], unit: [3, 3, 1, 0.5], target: [1.2, 0.8, 0.5, 0.25], win: 0.3, runLen: 8, flashEvery: 2, minRel: 0.5 }, opt.classic || {}); // tuned against all 7 GE shows
+    const ok = id => (!enabled || enabled.includes(id)) && fx.find(f => f.id === id);
+    const poolOf = name => { let p = POOLS[name].filter(ok); if (!p.length) p = (enabled || POOLS.mid).filter(ok); return p; };
+    const R = rng(seed * 7919 + 13), cues = [], levels = [];
+    const beats = A.beats || []; if (beats.length < 8 || !A.sections.length) return { cues, levels };
+    const M = A.meter || 4, ons = A.onsets;
+    const localMed = (t, w) => { const a = []; for (const o of ons) { if (o.t > t + w) break; if (o.t >= t - w) a.push(o.s); } return a.length ? pct(a, 0.5) : 0; };
+    const tierOf = e => e < P.thr[0] ? 0 : e < P.thr[1] ? 1 : e < P.thr[2] ? 2 : 3;
+    const looks = []; const usage = {}; let lastFx = null, switches = 0, flashed = false;
+    const pick = (tier, avoid) => {
+      const p = poolOf(tier <= 1 ? "slow" : tier === 2 ? "mid" : "high").filter(x => x !== avoid); if (!p.length) return avoid;
+      const w = p.map(x => 1 / (1 + (usage[x] || 0))), tot = w.reduce((a, b) => a + b, 0); let r = R() * tot;
+      for (let q = 0; q < p.length; q++) { r -= w[q]; if (r <= 0) return p[q]; } return p[p.length - 1];
+    };
+    A.sections.forEach((S, si) => {
+      const tier = tierOf(S.energy); levels.push([0, 1, 2, 4][tier]);
+      let look = null;
+      if (repeatLooks) for (const lk of looks) if (lk.tier === tier && A.cos(lk.vec, S.vec) > 0.9) { look = lk; break; }
+      if (!look) { look = { tier, vec: S.vec, seq: [] }; looks.push(look); }
+      // rhythmic slots: bars, beats or half-beats depending on how busy the section is
+      let unit = P.unit[tier] === 3 ? M : P.unit[tier];
+      if (P.target) { const bd = 60 / (A.bpm || 120), allowed = M === 3 ? [0.5, 1, 3, 6] : [0.5, 1, 2, 4]; unit = allowed.reduce((b, k) => Math.abs(k * bd - P.target[tier]) < Math.abs(b * bd - P.target[tier]) ? k : b, allowed[0]); }
+      const slots = [];
+      for (let i = 0; i + 1 < beats.length; i++) {
+        const b0 = beats[i], b1 = beats[i + 1];
+        if (b1 <= S.t0 || b0 >= S.t1) continue;
+        if (unit >= 1) { if (((i - A.phase) % unit + unit) % unit === 0) slots.push([b0, (b1 - b0) * unit]); }
+        else { slots.push([b0, (b1 - b0) / 2]); slots.push([(b0 + b1) / 2, (b1 - b0) / 2]); }
+      }
+      // in each slot, fire on the strongest real note near it
+      let run = 0, runIdx = 0, id = null;
+      slots.forEach(([t, w]) => {
+        if (t < S.t0 - 0.05 || t >= S.t1) return;
+        let best = null;
+        for (const o of ons) { if (o.t > t + w * P.win) break; if (o.t >= t - w * P.win && (!best || o.s > best.s)) best = o; }
+        if (!best || best.s < P.minRel * localMed(best.t, 3)) return;
+        if (cues.length && best.t - cues[cues.length - 1].t < 0.12) return;
+        if (run === 0) {
+          id = look.seq[runIdx] || (look.seq[runIdx] = pick(tier, lastFx)); usage[id] = (usage[id] || 0) + 1; lastFx = id;
+          if (accents && ok("fx30") && P.flashEvery && switches > 0 && switches % P.flashEvery === 0 && !flashed) { cues.push({ t: best.t, b: frame(0x30) }); flashed = true; return; }
+          flashed = false; switches++;
+        }
+        cues.push({ t: best.t, b: frame(...fx.find(f => f.id === id).b) });
+        if (++run >= P.runLen) { run = 0; runIdx++; }
+      });
+    });
+    cues.sort((a, b) => a.t - b.t);
+    return { cues: cues.map(c => ({ t: Math.round(c.t * 1000) / 1000, b: c.b })), levels };
+  }
+  return { analyze, generate: (A, opt) => opt.style === 3 ? generateClassic(A, opt) : generate(A, opt), generateClassic, POOLS };
+})();
+
+const BUILTIN = [{"idx":1,"name":"Carol of the Bells","table":"table01","cues":[[225,[255,48,0,0,0,0,0,0,0,0]],[573,[255,25,0,0,0,0,0,0,0,0]],[737,[255,25,0,0,0,0,0,0,0,0]],[905,[255,25,0,0,0,0,0,0,0,0]],[1237,[255,30,3,0,0,0,0,0,0,0]],[1572,[255,25,0,0,0,0,0,0,0,0]],[1739,[255,25,0,0,0,0,0,0,0,0]],[1904,[255,25,0,0,0,0,0,0,0,0]],[2236,[255,30,3,0,0,0,0,0,0,0]],[2574,[255,25,0,0,0,0,0,0,0,0]],[2739,[255,25,0,0,0,0,0,0,0,0]],[2906,[255,25,0,0,0,0,0,0,0,0]],[3238,[255,30,3,0,0,0,0,0,0,0]],[3571,[255,25,0,0,0,0,0,0,0,0]],[3741,[255,25,0,0,0,0,0,0,0,0]],[3906,[255,25,0,0,0,0,0,0,0,0]],[4232,[255,48,0,0,0,0,0,0,0,0]],[4573,[255,25,0,0,0,0,0,0,0,0]],[4740,[255,25,0,0,0,0,0,0,0,0]],[4905,[255,25,0,0,0,0,0,0,0,0]],[5237,[255,30,3,0,0,0,0,0,0,0]],[5577,[255,25,0,0,0,0,0,0,0,0]],[5741,[255,25,0,0,0,0,0,0,0,0]],[5909,[255,25,0,0,0,0,0,0,0,0]],[6241,[255,30,3,0,0,0,0,0,0,0]],[6576,[255,25,0,0,0,0,0,0,0,0]],[6743,[255,25,0,0,0,0,0,0,0,0]],[6908,[255,25,0,0,0,0,0,0,0,0]],[7243,[255,30,3,0,0,0,0,0,0,0]],[7571,[255,25,0,0,0,0,0,0,0,0]],[7742,[255,25,0,0,0,0,0,0,0,0]],[7906,[255,25,0,0,0,0,0,0,0,0]],[8238,[255,48,0,0,0,0,0,0,0,0]],[8573,[255,25,0,0,0,0,0,0,0,0]],[8741,[255,25,0,0,0,0,0,0,0,0]],[8905,[255,25,0,0,0,0,0,0,0,0]],[9242,[255,30,3,0,0,0,0,0,0,0]],[9574,[255,25,0,0,0,0,0,0,0,0]],[9744,[255,25,0,0,0,0,0,0,0,0]],[9909,[255,25,0,0,0,0,0,0,0,0]],[10238,[255,30,3,0,0,0,0,0,0,0]],[10576,[255,25,0,0,0,0,0,0,0,0]],[10741,[255,25,0,0,0,0,0,0,0,0]],[10908,[255,25,0,0,0,0,0,0,0,0]],[11241,[255,30,3,0,0,0,0,0,0,0]],[11576,[255,25,0,0,0,0,0,0,0,0]],[11744,[255,25,0,0,0,0,0,0,0,0]],[11911,[255,25,0,0,0,0,0,0,0,0]],[12238,[255,48,0,0,0,0,0,0,0,0]],[12576,[255,25,0,0,0,0,0,0,0,0]],[12743,[255,25,0,0,0,0,0,0,0,0]],[12908,[255,25,0,0,0,0,0,0,0,0]],[13240,[255,30,3,0,0,0,0,0,0,0]],[13578,[255,25,0,0,0,0,0,0,0,0]],[13743,[255,25,0,0,0,0,0,0,0,0]],[13907,[255,25,0,0,0,0,0,0,0,0]],[14239,[255,30,3,0,0,0,0,0,0,0]],[14574,[255,25,0,0,0,0,0,0,0,0]],[14742,[255,25,0,0,0,0,0,0,0,0]],[14909,[255,25,0,0,0,0,0,0,0,0]],[15239,[255,30,3,0,0,0,0,0,0,0]],[15577,[255,25,0,0,0,0,0,0,0,0]],[15744,[255,25,0,0,0,0,0,0,0,0]],[15909,[255,25,0,0,0,0,0,0,0,0]],[16241,[255,20,0,0,0,0,0,0,0,0]],[16575,[255,20,0,0,0,0,0,0,0,0]],[16740,[255,20,0,0,0,0,0,0,0,0]],[16904,[255,20,0,0,0,0,0,0,0,0]],[17239,[255,20,0,0,0,0,0,0,0,0]],[17577,[255,20,0,0,0,0,0,0,0,0]],[17742,[255,20,0,0,0,0,0,0,0,0]],[17910,[255,20,0,0,0,0,0,0,0,0]],[18239,[255,20,0,0,0,0,0,0,0,0]],[18572,[255,20,0,0,0,0,0,0,0,0]],[18739,[255,20,0,0,0,0,0,0,0,0]],[18904,[255,20,0,0,0,0,0,0,0,0]],[19239,[255,20,0,0,0,0,0,0,0,0]],[19571,[255,20,0,0,0,0,0,0,0,0]],[19742,[255,20,0,0,0,0,0,0,0,0]],[19906,[255,20,0,0,0,0,0,0,0,0]],[20241,[255,16,0,0,0,0,0,0,0,0]],[20401,[255,16,0,0,0,0,0,0,0,0]],[20575,[255,16,0,0,0,0,0,0,0,0]],[20733,[255,16,0,0,0,0,0,0,0,0]],[20904,[255,16,0,0,0,0,0,0,0,0]],[21071,[255,16,0,0,0,0,0,0,0,0]],[21233,[255,16,0,0,0,0,0,0,0,0]],[21400,[255,16,0,0,0,0,0,0,0,0]],[21571,[255,16,0,0,0,0,0,0,0,0]],[21738,[255,16,0,0,0,0,0,0,0,0]],[21909,[255,16,0,0,0,0,0,0,0,0]],[22074,[255,16,0,0,0,0,0,0,0,0]],[22241,[255,16,0,0,0,0,0,0,0,0]],[22403,[255,16,0,0,0,0,0,0,0,0]],[22576,[255,16,0,0,0,0,0,0,0,0]],[22738,[255,16,0,0,0,0,0,0,0,0]],[22899,[255,16,0,0,0,0,0,0,0,0]],[23075,[255,16,0,0,0,0,0,0,0,0]],[23237,[255,16,0,0,0,0,0,0,0,0]],[23575,[255,16,0,0,0,0,0,0,0,0]],[23740,[255,16,0,0,0,0,0,0,0,0]],[23907,[255,48,0,0,0,0,0,0,0,0]],[24239,[255,16,0,0,0,0,0,0,0,0]],[24407,[255,16,0,0,0,0,0,0,0,0]],[24574,[255,16,0,0,0,0,0,0,0,0]],[24739,[255,16,0,0,0,0,0,0,0,0]],[24909,[255,16,0,0,0,0,0,0,0,0]],[25074,[255,16,0,0,0,0,0,0,0,0]],[25242,[255,16,0,0,0,0,0,0,0,0]],[25409,[255,16,0,0,0,0,0,0,0,0]],[25573,[255,16,0,0,0,0,0,0,0,0]],[25908,[255,48,0,0,0,0,0,0,0,0]],[26237,[255,20,0,0,0,0,0,0,0,0]],[26405,[255,20,0,0,0,0,0,0,0,0]],[26572,[255,20,0,0,0,0,0,0,0,0]],[26740,[255,20,0,0,0,0,0,0,0,0]],[26907,[255,20,0,0,0,0,0,0,0,0]],[27072,[255,20,0,0,0,0,0,0,0,0]],[27239,[255,20,0,0,0,0,0,0,0,0]],[27407,[255,20,0,0,0,0,0,0,0,0]],[27575,[255,20,0,0,0,0,0,0,0,0]],[27907,[255,48,0,0,0,0,0,0,0,0]],[28224,[255,30,3,0,0,0,0,0,0,0]],[28575,[255,25,0,0,0,0,0,0,0,0]],[28737,[255,25,0,0,0,0,0,0,0,0]],[28896,[255,25,0,0,0,0,0,0,0,0]],[29237,[255,30,3,0,0,0,0,0,0,0]],[29572,[255,25,0,0,0,0,0,0,0,0]],[29736,[255,25,0,0,0,0,0,0,0,0]],[29904,[255,25,0,0,0,0,0,0,0,0]],[30236,[255,30,3,0,0,0,0,0,0,0]],[30568,[255,25,0,0,0,0,0,0,0,0]],[30736,[255,25,0,0,0,0,0,0,0,0]],[30903,[255,25,0,0,0,0,0,0,0,0]],[31238,[255,48,0,0,0,0,0,0,0,0]],[31564,[255,25,0,0,0,0,0,0,0,0]],[31738,[255,25,0,0,0,0,0,0,0,0]],[31905,[255,25,0,0,0,0,0,0,0,0]],[32240,[255,30,3,0,0,0,0,0,0,0]],[32571,[255,25,0,0,0,0,0,0,0,0]],[32741,[255,25,0,0,0,0,0,0,0,0]],[32897,[255,25,0,0,0,0,0,0,0,0]],[33235,[255,30,3,0,0,0,0,0,0,0]],[33570,[255,25,0,0,0,0,0,0,0,0]],[33735,[255,25,0,0,0,0,0,0,0,0]],[33899,[255,25,0,0,0,0,0,0,0,0]],[34234,[255,30,3,0,0,0,0,0,0,0]],[34566,[255,25,0,0,0,0,0,0,0,0]],[34740,[255,25,0,0,0,0,0,0,0,0]],[34904,[255,25,0,0,0,0,0,0,0,0]],[35239,[255,48,0,0,0,0,0,0,0,0]],[35566,[255,16,0,0,0,0,0,0,0,0]],[35739,[255,16,0,0,0,0,0,0,0,0]],[35901,[255,16,0,0,0,0,0,0,0,0]],[36071,[255,16,0,0,0,0,0,0,0,0]],[36242,[255,48,0,0,0,0,0,0,0,0]],[36559,[255,25,0,0,0,0,0,0,0,0]],[36736,[255,25,0,0,0,0,0,0,0,0]],[36897,[255,25,0,0,0,0,0,0,0,0]],[37235,[255,30,3,0,0,0,0,0,0,0]],[37568,[255,25,0,0,0,0,0,0,0,0]],[37738,[255,25,0,0,0,0,0,0,0,0]],[37894,[255,25,0,0,0,0,0,0,0,0]],[38241,[255,30,3,0,0,0,0,0,0,0]],[38573,[255,25,0,0,0,0,0,0,0,0]],[38737,[255,25,0,0,0,0,0,0,0,0]],[38902,[255,25,0,0,0,0,0,0,0,0]],[39237,[255,30,3,0,0,0,0,0,0,0]],[39560,[255,25,0,0,0,0,0,0,0,0]],[39734,[255,25,0,0,0,0,0,0,0,0]],[39907,[255,25,0,0,0,0,0,0,0,0]],[40242,[255,48,0,0,0,0,0,0,0,0]],[40574,[255,25,0,0,0,0,0,0,0,0]],[40742,[255,25,0,0,0,0,0,0,0,0]],[40898,[255,25,0,0,0,0,0,0,0,0]],[41241,[255,30,3,0,0,0,0,0,0,0]],[41570,[255,25,0,0,0,0,0,0,0,0]],[41740,[255,25,0,0,0,0,0,0,0,0]],[41902,[255,25,0,0,0,0,0,0,0,0]],[42231,[255,30,3,0,0,0,0,0,0,0]],[42566,[255,25,0,0,0,0,0,0,0,0]],[42737,[255,25,0,0,0,0,0,0,0,0]],[42898,[255,25,0,0,0,0,0,0,0,0]],[43242,[255,30,3,0,0,0,0,0,0,0]],[43566,[255,25,0,0,0,0,0,0,0,0]],[43733,[255,25,0,0,0,0,0,0,0,0]],[43907,[255,25,0,0,0,0,0,0,0,0]],[44239,[255,48,0,0,0,0,0,0,0,0]],[44564,[255,25,0,0,0,0,0,0,0,0]],[44738,[255,25,0,0,0,0,0,0,0,0]],[44902,[255,25,0,0,0,0,0,0,0,0]],[45234,[255,30,3,0,0,0,0,0,0,0]],[45566,[255,25,0,0,0,0,0,0,0,0]],[45734,[255,25,0,0,0,0,0,0,0,0]],[45899,[255,25,0,0,0,0,0,0,0,0]],[46234,[255,30,3,0,0,0,0,0,0,0]],[46566,[255,25,0,0,0,0,0,0,0,0]],[46739,[255,25,0,0,0,0,0,0,0,0]],[46898,[255,25,0,0,0,0,0,0,0,0]],[47233,[255,30,3,0,0,0,0,0,0,0]],[47568,[255,25,0,0,0,0,0,0,0,0]],[47741,[255,25,0,0,0,0,0,0,0,0]],[47897,[255,25,0,0,0,0,0,0,0,0]],[48241,[255,48,0,0,0,0,0,0,0,0]],[48564,[255,25,0,0,0,0,0,0,0,0]],[48741,[255,25,0,0,0,0,0,0,0,0]],[48902,[255,25,0,0,0,0,0,0,0,0]],[49240,[255,30,3,0,0,0,0,0,0,0]],[49575,[255,25,0,0,0,0,0,0,0,0]],[49740,[255,25,0,0,0,0,0,0,0,0]],[49905,[255,25,0,0,0,0,0,0,0,0]],[50237,[255,30,3,0,0,0,0,0,0,0]],[50567,[255,25,0,0,0,0,0,0,0,0]],[50737,[255,25,0,0,0,0,0,0,0,0]],[50905,[255,25,0,0,0,0,0,0,0,0]],[51243,[255,30,3,0,0,0,0,0,0,0]],[51578,[255,25,0,0,0,0,0,0,0,0]],[51737,[255,25,0,0,0,0,0,0,0,0]],[51910,[255,25,0,0,0,0,0,0,0,0]],[52239,[255,48,0,0,0,0,0,0,0,0]],[52576,[255,16,0,0,0,0,0,0,0,0]],[52740,[255,16,0,0,0,0,0,0,0,0]],[52908,[255,16,0,0,0,0,0,0,0,0]],[53075,[255,16,0,0,0,0,0,0,0,0]],[53237,[255,16,0,0,0,0,0,0,0,0]],[53408,[255,16,0,0,0,0,0,0,0,0]],[53570,[255,16,0,0,0,0,0,0,0,0]],[53732,[255,16,0,0,0,0,0,0,0,0]],[53917,[255,16,0,0,0,0,0,0,0,0]],[53072,[255,16,0,0,0,0,0,0,0,0]],[54234,[255,16,0,0,0,0,0,0,0,0]],[54579,[255,16,0,0,0,0,0,0,0,0]],[54746,[255,16,0,0,0,0,0,0,0,0]],[54907,[255,16,0,0,0,0,0,0,0,0]],[55080,[255,16,0,0,0,0,0,0,0,0]],[55235,[255,17,32,0,0,0,0,0,0,0]],[56242,[255,16,0,0,0,0,0,0,0,0]],[56408,[255,16,0,0,0,0,0,0,0,0]],[56575,[255,16,0,0,0,0,0,0,0,0]],[56736,[255,16,0,0,0,0,0,0,0,0]],[56903,[255,16,0,0,0,0,0,0,0,0]],[57075,[255,16,0,0,0,0,0,0,0,0]],[57242,[255,16,0,0,0,0,0,0,0,0]],[57409,[255,16,0,0,0,0,0,0,0,0]],[57576,[255,16,0,0,0,0,0,0,0,0]],[57904,[255,48,0,0,0,0,0,0,0,0]],[58244,[255,20,0,0,0,0,0,0,0,0]],[58405,[255,20,0,0,0,0,0,0,0,0]],[58572,[255,20,0,0,0,0,0,0,0,0]],[58739,[255,20,0,0,0,0,0,0,0,0]],[58906,[255,20,0,0,0,0,0,0,0,0]],[59067,[255,20,0,0,0,0,0,0,0,0]],[59234,[255,20,0,0,0,0,0,0,0,0]],[59407,[255,20,0,0,0,0,0,0,0,0]],[59574,[255,20,0,0,0,0,0,0,0,0]],[59902,[255,48,0,0,0,0,0,0,0,0]],[60241,[255,16,0,0,0,0,0,0,0,0]],[60412,[255,16,0,0,0,0,0,0,0,0]],[60578,[255,16,0,0,0,0,0,0,0,0]],[60745,[255,16,0,0,0,0,0,0,0,0]],[60912,[255,16,0,0,0,0,0,0,0,0]],[61073,[255,16,0,0,0,0,0,0,0,0]],[61240,[255,16,0,0,0,0,0,0,0,0]],[61407,[255,16,0,0,0,0,0,0,0,0]],[61574,[255,16,0,0,0,0,0,0,0,0]],[61908,[255,48,0,0,0,0,0,0,0,0]],[62242,[255,20,0,0,0,0,0,0,0,0]],[62409,[255,20,0,0,0,0,0,0,0,0]],[62576,[255,20,0,0,0,0,0,0,0,0]],[62743,[255,20,0,0,0,0,0,0,0,0]],[62910,[255,20,0,0,0,0,0,0,0,0]],[63076,[255,20,0,0,0,0,0,0,0,0]],[63243,[255,20,0,0,0,0,0,0,0,0]],[63410,[255,20,0,0,0,0,0,0,0,0]],[63571,[255,20,0,0,0,0,0,0,0,0]],[63911,[255,48,0,0,0,0,0,0,0,0]],[64251,[255,23,0,0,0,0,0,0,0,0]],[65238,[255,23,0,0,0,0,0,0,0,0]],[66234,[255,23,0,0,0,0,0,0,0,0]],[67241,[255,23,0,0,0,0,0,0,0,0]],[68237,[255,23,0,0,0,0,0,0,0,0]],[69234,[255,23,0,0,0,0,0,0,0,0]],[70234,[255,23,0,0,0,0,0,0,0,0]],[71241,[255,23,0,0,0,0,0,0,0,0]],[72224,[255,19,32,1,0,0,0,0,0,0]],[72575,[255,25,0,0,0,0,0,0,0,0]],[73231,[255,25,0,0,0,0,0,0,0,0]],[73588,[255,25,0,0,0,0,0,0,0,0]],[74233,[255,25,0,0,0,0,0,0,0,0]],[74607,[255,25,0,0,0,0,0,0,0,0]],[75240,[255,25,0,0,0,0,0,0,0,0]],[75608,[255,25,0,0,0,0,0,0,0,0]],[76227,[255,25,0,0,0,0,0,0,0,0]],[76578,[255,25,0,0,0,0,0,0,0,0]],[76739,[255,25,0,0,0,0,0,0,0,0]],[76912,[255,25,0,0,0,0,0,0,0,0]],[77234,[255,25,0,0,0,0,0,0,0,0]],[77585,[255,25,0,0,0,0,0,0,0,0]],[77740,[255,25,0,0,0,0,0,0,0,0]],[77925,[255,25,0,0,0,0,0,0,0,0]],[78241,[255,25,0,0,0,0,0,0,0,0]],[78564,[255,25,0,0,0,0,0,0,0,0]],[78736,[255,25,0,0,0,0,0,0,0,0]],[78920,[255,25,0,0,0,0,0,0,0,0]],[79243,[255,25,0,0,0,0,0,0,0,0]],[79588,[255,25,0,0,0,0,0,0,0,0]],[79743,[255,25,0,0,0,0,0,0,0,0]],[79939,[255,25,0,0,0,0,0,0,0,0]],[80238,[255,48,0,0,0,0,0,0,0,0]],[80584,[255,25,0,0,0,0,0,0,0,0]],[80745,[255,25,0,0,0,0,0,0,0,0]],[80929,[255,25,0,0,0,0,0,0,0,0]],[81240,[255,30,3,0,0,0,0,0,0,0]],[81568,[255,25,0,0,0,0,0,0,0,0]],[81741,[255,25,0,0,0,0,0,0,0,0]],[81931,[255,25,0,0,0,0,0,0,0,0]],[82241,[255,30,3,0,0,0,0,0,0,0]],[82575,[255,25,0,0,0,0,0,0,0,0]],[82742,[255,25,0,0,0,0,0,0,0,0]],[82932,[255,25,0,0,0,0,0,0,0,0]],[83243,[255,30,3,0,0,0,0,0,0,0]],[83565,[255,25,0,0,0,0,0,0,0,0]],[83744,[255,25,0,0,0,0,0,0,0,0]],[83939,[255,25,0,0,0,0,0,0,0,0]],[84239,[255,48,0,0,0,0,0,0,0,0]],[84580,[255,25,0,0,0,0,0,0,0,0]],[84747,[255,25,0,0,0,0,0,0,0,0]],[84914,[255,25,0,0,0,0,0,0,0,0]],[85242,[255,30,3,0,0,0,0,0,0,0]],[85588,[255,25,0,0,0,0,0,0,0,0]],[85743,[255,25,0,0,0,0,0,0,0,0]],[85916,[255,25,0,0,0,0,0,0,0,0]],[86244,[255,30,3,0,0,0,0,0,0,0]],[86578,[255,25,0,0,0,0,0,0,0,0]],[86744,[255,25,0,0,0,0,0,0,0,0]],[86911,[255,25,0,0,0,0,0,0,0,0]],[87245,[255,30,3,0,0,0,0,0,0,0]],[87579,[255,25,0,0,0,0,0,0,0,0]],[87746,[255,25,0,0,0,0,0,0,0,0]],[87913,[255,25,0,0,0,0,0,0,0,0]],[88247,[255,20,0,0,0,0,0,0,0,0]],[88598,[255,20,0,0,0,0,0,0,0,0]],[88776,[255,20,0,0,0,0,0,0,0,0]],[88939,[255,20,0,0,0,0,0,0,0,0]],[89104,[255,20,0,0,0,0,0,0,0,0]],[89254,[255,20,0,0,0,0,0,0,0,0]],[89437,[255,20,0,0,0,0,0,0,0,0]],[89649,[255,20,0,0,0,0,0,0,0,0]],[89850,[255,20,0,0,0,0,0,0,0,0]],[90077,[255,20,0,0,0,0,0,0,0,0]],[90250,[255,20,0,0,0,0,0,0,0,0]],[90578,[255,20,0,0,0,0,0,0,0,0]],[90745,[255,20,0,0,0,0,0,0,0,0]],[90912,[255,20,0,0,0,0,0,0,0,0]],[91078,[255,20,0,0,0,0,0,0,0,0]],[91240,[255,20,0,0,0,0,0,0,0,0]],[91579,[255,20,0,0,0,0,0,0,0,0]],[91746,[255,20,0,0,0,0,0,0,0,0]],[91942,[255,48,0,0,0,0,0,0,0,0]],[92270,[255,16,0,0,0,0,0,0,0,0]],[92441,[255,16,0,0,0,0,0,0,0,0]],[92602,[255,16,0,0,0,0,0,0,0,0]],[92769,[255,16,0,0,0,0,0,0,0,0]],[92907,[255,16,0,0,0,0,0,0,0,0]],[93074,[255,16,0,0,0,0,0,0,0,0]],[93247,[255,16,0,0,0,0,0,0,0,0]],[93414,[255,16,0,0,0,0,0,0,0,0]],[93581,[255,16,0,0,0,0,0,0,0,0]],[93909,[255,48,0,0,0,0,0,0,0,0]],[94266,[255,20,0,0,0,0,0,0,0,0]],[94438,[255,20,0,0,0,0,0,0,0,0]],[94605,[255,20,0,0,0,0,0,0,0,0]],[94772,[255,20,0,0,0,0,0,0,0,0]],[94910,[255,20,0,0,0,0,0,0,0,0]],[95077,[255,20,0,0,0,0,0,0,0,0]],[95250,[255,20,0,0,0,0,0,0,0,0]],[95417,[255,20,0,0,0,0,0,0,0,0]],[95590,[255,20,0,0,0,0,0,0,0,0]],[95906,[255,48,0,0,0,0,0,0,0,0]],[96257,[255,16,0,0,0,0,0,0,0,0]],[96441,[255,16,0,0,0,0,0,0,0,0]],[96608,[255,16,0,0,0,0,0,0,0,0]],[96796,[255,16,0,0,0,0,0,0,0,0]],[96913,[255,16,0,0,0,0,0,0,0,0]],[97074,[255,16,0,0,0,0,0,0,0,0]],[97258,[255,16,0,0,0,0,0,0,0,0]],[97408,[255,16,0,0,0,0,0,0,0,0]],[97575,[255,16,0,0,0,0,0,0,0,0]],[97909,[255,48,0,0,0,0,0,0,0,0]],[98260,[255,20,0,0,0,0,0,0,0,0]],[98439,[255,20,0,0,0,0,0,0,0,0]],[98606,[255,20,0,0,0,0,0,0,0,0]],[98773,[255,20,0,0,0,0,0,0,0,0]],[98911,[255,20,0,0,0,0,0,0,0,0]],[99072,[255,20,0,0,0,0,0,0,0,0]],[99251,[255,20,0,0,0,0,0,0,0,0]],[99412,[255,20,0,0,0,0,0,0,0,0]],[99585,[255,20,0,0,0,0,0,0,0,0]],[99913,[255,48,0,0,0,0,0,0,0,0]],[100252,[255,30,3,0,0,0,0,0,0,0]],[100586,[255,25,0,0,0,0,0,0,0,0]],[100753,[255,25,0,0,0,0,0,0,0,0]],[100949,[255,25,0,0,0,0,0,0,0,0]],[101248,[255,30,3,0,0,0,0,0,0,0]],[101576,[255,25,0,0,0,0,0,0,0,0]],[101743,[255,25,0,0,0,0,0,0,0,0]],[101950,[255,25,0,0,0,0,0,0,0,0]],[102250,[255,30,3,0,0,0,0,0,0,0]],[102582,[255,25,0,0,0,0,0,0,0,0]],[102744,[255,25,0,0,0,0,0,0,0,0]],[102946,[255,25,0,0,0,0,0,0,0,0]],[103242,[255,48,0,0,0,0,0,0,0,0]],[103579,[255,25,0,0,0,0,0,0,0,0]],[103747,[255,25,0,0,0,0,0,0,0,0]],[103943,[255,25,0,0,0,0,0,0,0,0]],[104249,[255,30,3,0,0,0,0,0,0,0]],[104586,[255,25,0,0,0,0,0,0,0,0]],[104761,[255,25,0,0,0,0,0,0,0,0]],[104970,[255,25,0,0,0,0,0,0,0,0]],[105320,[255,30,3,0,0,0,0,0,0,0]],[105704,[255,25,0,0,0,0,0,0,0,0]],[105906,[255,25,0,0,0,0,0,0,0,0]],[106142,[255,25,0,0,0,0,0,0,0,0]],[106536,[255,30,3,0,0,0,0,0,0,0]],[106994,[255,25,0,0,0,0,0,0,0,0]],[107244,[255,25,0,0,0,0,0,0,0,0]],[107520,[255,25,0,0,0,0,0,0,0,0]],[107998,[255,48,0,0,0,0,0,0,0,0]],[108550,[255,25,0,0,0,0,0,0,0,0]],[108833,[255,25,0,0,0,0,0,0,0,0]],[109190,[255,25,0,0,0,0,0,0,0,0]],[109701,[255,30,3,0,0,0,0,0,0,0]],[110718,[255,25,0,0,0,0,0,0,0,0]],[111735,[255,19,32,0,0,0,0,0,0,0]]]},{"idx":2,"name":"Deck the Halls","table":"table02","cues":[[242,[255,16,0,0,0,0,0,0,0,0]],[578,[255,16,0,0,0,0,0,0,0,0]],[912,[255,16,0,0,0,0,0,0,0,0]],[1400,[255,16,0,0,0,0,0,0,0,0]],[1600,[255,16,0,0,0,0,0,0,0,0]],[1912,[255,16,0,0,0,0,0,0,0,0]],[2246,[255,48,0,0,0,0,0,0,0,0]],[2901,[255,18,0,0,0,0,0,0,0,0]],[3404,[255,18,0,0,0,0,0,0,0,0]],[3575,[255,18,0,0,0,0,0,0,0,0]],[3905,[255,18,0,0,0,0,0,0,0,0]],[4224,[255,18,0,0,0,0,0,0,0,0]],[4575,[255,18,0,0,0,0,0,0,0,0]],[4890,[255,18,0,0,0,0,0,0,0,0]],[5234,[255,48,0,0,0,0,0,0,0,0]],[5555,[255,20,0,0,0,0,0,0,0,0]],[5729,[255,20,0,0,0,0,0,0,0,0]],[5899,[255,20,0,0,0,0,0,0,0,0]],[6069,[255,20,0,0,0,0,0,0,0,0]],[6234,[255,20,0,0,0,0,0,0,0,0]],[6743,[255,20,0,0,0,0,0,0,0,0]],[6899,[255,20,0,0,0,0,0,0,0,0]],[7229,[255,20,0,0,0,0,0,0,0,0]],[7558,[255,48,0,0,0,0,0,0,0,0]],[8233,[255,22,0,0,0,0,0,0,0,0]],[8732,[255,22,0,0,0,0,0,0,0,0]],[8907,[255,22,0,0,0,0,0,0,0,0]],[9237,[255,22,0,0,0,0,0,0,0,0]],[9557,[255,22,0,0,0,0,0,0,0,0]],[9885,[255,22,0,0,0,0,0,0,0,0]],[10227,[255,22,0,0,0,0,0,0,0,0]],[10566,[255,48,0,0,0,0,0,0,0,0]],[10896,[255,21,0,0,0,0,0,0,0,0]],[11066,[255,21,0,0,0,0,0,0,0,0]],[11241,[255,21,0,0,0,0,0,0,0,0]],[11400,[255,21,0,0,0,0,0,0,0,0]],[11561,[255,21,0,0,0,0,0,0,0,0]],[12070,[255,21,0,0,0,0,0,0,0,0]],[12235,[255,21,0,0,0,0,0,0,0,0]],[12570,[255,21,0,0,0,0,0,0,0,0]],[12919,[255,48,0,0,0,0,0,0,0,0]],[13550,[255,25,0,0,0,0,0,0,0,0]],[14060,[255,25,0,0,0,0,0,0,0,0]],[14239,[255,25,0,0,0,0,0,0,0,0]],[14570,[255,25,0,0,0,0,0,0,0,0]],[14865,[255,25,0,0,0,0,0,0,0,0]],[15400,[255,25,0,0,0,0,0,0,0,0]],[15578,[255,25,0,0,0,0,0,0,0,0]],[15918,[255,25,0,0,0,0,0,0,0,0]],[16219,[255,25,0,0,0,0,0,0,0,0]],[16400,[255,25,0,0,0,0,0,0,0,0]],[16573,[255,25,0,0,0,0,0,0,0,0]],[16898,[255,25,0,0,0,0,0,0,0,0]],[17072,[255,25,0,0,0,0,0,0,0,0]],[17233,[255,48,0,0,0,0,0,0,0,0]],[17600,[255,27,0,0,0,0,0,0,0,0]],[17897,[255,27,0,0,0,0,0,0,0,0]],[18214,[255,27,0,0,0,0,0,0,0,0]],[18902,[255,27,0,0,0,0,0,0,0,0]],[19404,[255,27,0,0,0,0,0,0,0,0]],[19901,[255,27,0,0,0,0,0,0,0,0]],[20241,[255,27,0,0,0,0,0,0,0,0]],[20575,[255,27,0,0,0,0,0,0,0,0]],[20905,[255,27,0,0,0,0,0,0,0,0]],[21230,[255,48,0,0,0,0,0,0,0,0]],[21570,[255,30,3,0,0,0,0,0,0,0]],[21905,[255,30,3,0,0,0,0,0,0,0]],[22244,[255,30,3,0,0,0,0,0,0,0]],[22729,[255,30,3,0,0,0,0,0,0,0]],[22909,[255,30,3,0,0,0,0,0,0,0]],[23229,[255,30,3,0,0,0,0,0,0,0]],[23580,[255,48,0,0,0,0,0,0,0,0]],[24224,[255,23,0,0,0,0,0,0,0,0]],[24927,[255,23,0,0,0,0,0,0,0,0]],[25563,[255,23,0,0,0,0,0,0,0,0]],[26219,[255,23,0,0,0,0,0,0,0,0]],[26916,[255,23,0,0,0,0,0,0,0,0]],[27242,[255,19,0,0,0,0,0,0,0,0]],[27605,[255,19,0,0,0,0,0,0,0,0]],[28251,[255,19,0,0,0,0,0,0,0,0]],[28906,[255,19,0,0,0,0,0,0,0,0]],[29580,[255,18,0,0,0,0,0,0,0,0]],[30570,[255,18,0,0,0,0,0,0,0,0]],[30919,[255,18,0,0,0,0,0,0,0,0]],[31744,[255,18,0,0,0,0,0,0,0,0]],[31923,[255,18,0,0,0,0,0,0,0,0]],[32253,[255,18,0,0,0,0,0,0,0,0]],[32585,[255,18,0,0,0,0,0,0,0,0]],[32903,[255,18,0,0,0,0,0,0,0,0]],[33243,[255,48,0,0,0,0,0,0,0,0]],[33578,[255,20,0,0,0,0,0,0,0,0]],[34078,[255,20,0,0,0,0,0,0,0,0]],[34228,[255,20,0,0,0,0,0,0,0,0]],[34577,[255,20,0,0,0,0,0,0,0,0]],[34907,[255,20,0,0,0,0,0,0,0,0]],[35252,[255,20,0,0,0,0,0,0,0,0]],[35562,[255,20,0,0,0,0,0,0,0,0]],[35907,[255,48,0,0,0,0,0,0,0,0]],[36232,[255,22,0,0,0,0,0,0,0,0]],[36404,[255,22,0,0,0,0,0,0,0,0]],[36571,[255,22,0,0,0,0,0,0,0,0]],[36736,[255,22,0,0,0,0,0,0,0,0]],[36901,[255,22,0,0,0,0,0,0,0,0]],[37400,[255,22,0,0,0,0,0,0,0,0]],[37528,[255,22,0,0,0,0,0,0,0,0]],[37910,[255,22,0,0,0,0,0,0,0,0]],[38235,[255,22,0,0,0,0,0,0,0,0]],[38910,[255,25,0,0,0,0,0,0,0,0]],[39414,[255,25,0,0,0,0,0,0,0,0]],[39580,[255,25,0,0,0,0,0,0,0,0]],[39904,[255,25,0,0,0,0,0,0,0,0]],[40244,[255,25,0,0,0,0,0,0,0,0]],[40569,[255,25,0,0,0,0,0,0,0,0]],[40904,[255,25,0,0,0,0,0,0,0,0]],[41248,[255,25,0,0,0,0,0,0,0,0]],[41573,[255,48,0,0,0,0,0,0,0,0]],[42248,[255,30,3,0,0,0,0,0,0,0]],[42912,[255,30,3,0,0,0,0,0,0,0]],[43242,[255,30,3,0,0,0,0,0,0,0]],[43590,[255,30,3,0,0,0,0,0,0,0]],[44214,[255,30,3,0,0,0,0,0,0,0]],[44921,[255,30,3,0,0,0,0,0,0,0]],[45246,[255,48,0,0,0,0,0,0,0,0]],[45552,[255,27,0,0,0,0,0,0,0,0]],[46080,[255,27,0,0,0,0,0,0,0,0]],[46255,[255,27,0,0,0,0,0,0,0,0]],[46600,[255,27,0,0,0,0,0,0,0,0]],[46910,[255,27,0,0,0,0,0,0,0,0]],[47090,[255,27,0,0,0,0,0,0,0,0]],[47245,[255,27,0,0,0,0,0,0,0,0]],[47575,[255,27,0,0,0,0,0,0,0,0]],[47749,[255,27,0,0,0,0,0,0,0,0]],[47924,[255,48,0,0,0,0,0,0,0,0]],[48254,[255,19,0,0,0,0,0,0,0,0]],[48569,[255,19,0,0,0,0,0,0,0,0]],[48904,[255,19,0,0,0,0,0,0,0,0]],[49579,[255,21,0,0,0,0,0,0,0,0]],[50078,[255,21,0,0,0,0,0,0,0,0]],[50253,[255,21,0,0,0,0,0,0,0,0]],[50568,[255,21,0,0,0,0,0,0,0,0]],[50893,[255,21,0,0,0,0,0,0,0,0]],[51238,[255,21,0,0,0,0,0,0,0,0]],[51577,[255,21,0,0,0,0,0,0,0,0]],[51907,[255,21,0,0,0,0,0,0,0,0]],[52242,[255,21,0,0,0,0,0,0,0,0]],[52572,[255,21,0,0,0,0,0,0,0,0]],[52912,[255,21,0,0,0,0,0,0,0,0]],[53400,[255,21,0,0,0,0,0,0,0,0]],[53600,[255,21,0,0,0,0,0,0,0,0]],[53916,[255,21,0,0,0,0,0,0,0,0]],[54256,[255,48,0,0,0,0,0,0,0,0]],[54915,[255,25,0,0,0,0,0,0,0,0]],[55240,[255,25,0,0,0,0,0,0,0,0]],[55580,[255,25,0,0,0,0,0,0,0,0]],[56075,[255,25,0,0,0,0,0,0,0,0]],[56245,[255,25,0,0,0,0,0,0,0,0]],[56575,[255,25,0,0,0,0,0,0,0,0]],[56914,[255,25,0,0,0,0,0,0,0,0]],[57564,[255,25,0,0,0,0,0,0,0,0]],[58074,[255,25,0,0,0,0,0,0,0,0]],[58574,[255,25,0,0,0,0,0,0,0,0]],[58923,[255,25,0,0,0,0,0,0,0,0]],[59243,[255,25,0,0,0,0,0,0,0,0]],[59578,[255,25,0,0,0,0,0,0,0,0]],[59908,[255,25,0,0,0,0,0,0,0,0]],[60238,[255,19,32,0,0,0,0,0,0,0]],[61567,[255,19,32,0,0,0,0,0,0,0]],[62916,[255,16,0,0,0,0,0,0,0,0]],[63414,[255,16,0,0,0,0,0,0,0,0]],[63600,[255,16,0,0,0,0,0,0,0,0]],[63910,[255,16,0,0,0,0,0,0,0,0]],[64235,[255,16,0,0,0,0,0,0,0,0]],[64585,[255,16,0,0,0,0,0,0,0,0]],[64900,[255,16,0,0,0,0,0,0,0,0]],[65230,[255,16,0,0,0,0,0,0,0,0]],[65560,[255,16,0,0,0,0,0,0,0,0]],[65735,[255,16,0,0,0,0,0,0,0,0]],[65895,[255,16,0,0,0,0,0,0,0,0]],[66079,[255,16,0,0,0,0,0,0,0,0]],[66254,[255,48,0,0,0,0,0,0,0,0]],[66923,[255,30,3,0,0,0,0,0,0,0]],[67239,[255,30,3,0,0,0,0,0,0,0]],[67570,[255,30,3,0,0,0,0,0,0,0]],[68238,[255,30,3,0,0,0,0,0,0,0]],[68747,[255,30,3,0,0,0,0,0,0,0]],[68917,[255,30,3,0,0,0,0,0,0,0]],[69242,[255,30,3,0,0,0,0,0,0,0]],[69572,[255,30,3,0,0,0,0,0,0,0]],[69897,[255,30,3,0,0,0,0,0,0,0]],[70251,[255,30,3,0,0,0,0,0,0,0]],[70576,[255,30,3,0,0,0,0,0,0,0]],[70921,[255,19,32,0,0,0,0,0,0,0]],[71571,[255,21,0,0,0,0,0,0,0,0]],[72255,[255,21,0,0,0,0,0,0,0,0]],[72566,[255,21,0,0,0,0,0,0,0,0]],[72930,[255,21,0,0,0,0,0,0,0,0]],[73570,[255,21,0,0,0,0,0,0,0,0]],[74249,[255,21,0,0,0,0,0,0,0,0]],[74574,[255,21,0,0,0,0,0,0,0,0]],[74904,[255,21,0,0,0,0,0,0,0,0]],[75501,[255,21,0,0,0,0,0,0,0,0]],[75913,[255,21,0,0,0,0,0,0,0,0]],[76234,[255,19,32,0,0,0,0,0,0,0]],[76908,[255,19,32,0,0,0,0,0,0,0]],[77580,[255,25,0,0,0,0,0,0,0,0]],[77907,[255,25,0,0,0,0,0,0,0,0]],[78242,[255,25,0,0,0,0,0,0,0,0]],[78912,[255,25,0,0,0,0,0,0,0,0]],[79409,[255,25,0,0,0,0,0,0,0,0]],[79585,[255,25,0,0,0,0,0,0,0,0]],[79916,[255,25,0,0,0,0,0,0,0,0]],[80251,[255,25,0,0,0,0,0,0,0,0]],[80585,[255,25,0,0,0,0,0,0,0,0]],[80920,[255,25,0,0,0,0,0,0,0,0]],[81240,[255,25,0,0,0,0,0,0,0,0]],[81590,[255,25,0,0,0,0,0,0,0,0]],[81929,[255,25,0,0,0,0,0,0,0,0]],[82254,[255,25,0,0,0,0,0,0,0,0]],[83040,[255,25,0,0,0,0,0,0,0,0]],[83414,[255,25,0,0,0,0,0,0,0,0]],[83820,[255,19,32,0,0,0,0,0,0,0]]]},{"idx":3,"name":"Ding Dong Merrily On High","table":"table03","cues":[[184,[255,23,0,0,0,0,0,0,0,0]],[895,[255,23,0,0,0,0,0,0,0,0]],[1554,[255,23,0,0,0,0,0,0,0,0]],[2227,[255,23,0,0,0,0,0,0,0,0]],[2851,[255,23,0,0,0,0,0,0,0,0]],[3561,[255,23,0,0,0,0,0,0,0,0]],[4213,[255,23,0,0,0,0,0,0,0,0]],[4913,[255,48,0,0,0,0,0,0,0,0]],[5545,[255,22,0,0,0,0,0,0,0,0]],[5877,[255,22,0,0,0,0,0,0,0,0]],[6218,[255,22,0,0,0,0,0,0,0,0]],[6382,[255,22,0,0,0,0,0,0,0,0]],[6551,[255,22,0,0,0,0,0,0,0,0]],[6722,[255,22,0,0,0,0,0,0,0,0]],[6883,[255,22,0,0,0,0,0,0,0,0]],[7875,[255,30,3,0,0,0,0,0,0,0]],[8213,[255,30,3,0,0,0,0,0,0,0]],[8558,[255,30,3,0,0,0,0,0,0,0]],[8885,[255,30,3,0,0,0,0,0,0,0]],[9218,[255,30,3,0,0,0,0,0,0,0]],[9541,[255,30,3,0,0,0,0,0,0,0]],[10218,[255,48,0,0,0,0,0,0,0,0]],[10879,[255,22,0,0,0,0,0,0,0,0]],[11213,[255,22,0,0,0,0,0,0,0,0]],[11543,[255,22,0,0,0,0,0,0,0,0]],[11714,[255,22,0,0,0,0,0,0,0,0]],[11880,[255,22,0,0,0,0,0,0,0,0]],[12041,[255,22,0,0,0,0,0,0,0,0]],[12213,[255,22,0,0,0,0,0,0,0,0]],[13209,[255,30,3,0,0,0,0,0,0,0]],[13550,[255,30,3,0,0,0,0,0,0,0]],[13878,[255,30,3,0,0,0,0,0,0,0]],[14218,[255,30,3,0,0,0,0,0,0,0]],[14546,[255,30,3,0,0,0,0,0,0,0]],[14881,[255,30,3,0,0,0,0,0,0,0]],[15548,[255,48,0,0,0,0,0,0,0,0]],[16209,[255,48,0,0,0,0,0,0,0,0]],[16710,[255,22,0,0,0,0,0,0,0,0]],[16881,[255,22,0,0,0,0,0,0,0,0]],[17043,[255,22,0,0,0,0,0,0,0,0]],[17209,[255,22,0,0,0,0,0,0,0,0]],[17379,[255,22,0,0,0,0,0,0,0,0]],[17545,[255,22,0,0,0,0,0,0,0,0]],[18044,[255,22,0,0,0,0,0,0,0,0]],[18218,[255,22,0,0,0,0,0,0,0,0]],[18381,[255,22,0,0,0,0,0,0,0,0]],[18542,[255,22,0,0,0,0,0,0,0,0]],[18717,[255,22,0,0,0,0,0,0,0,0]],[18879,[255,22,0,0,0,0,0,0,0,0]],[19383,[255,16,0,0,0,0,0,0,0,0]],[19552,[255,16,0,0,0,0,0,0,0,0]],[19714,[255,16,0,0,0,0,0,0,0,0]],[19880,[255,16,0,0,0,0,0,0,0,0]],[20046,[255,16,0,0,0,0,0,0,0,0]],[20213,[255,16,0,0,0,0,0,0,0,0]],[20710,[255,16,0,0,0,0,0,0,0,0]],[20876,[255,16,0,0,0,0,0,0,0,0]],[21056,[255,16,0,0,0,0,0,0,0,0]],[21213,[255,16,0,0,0,0,0,0,0,0]],[21381,[255,16,0,0,0,0,0,0,0,0]],[21545,[255,48,0,0,0,0,0,0,0,0]],[22048,[255,22,0,0,0,0,0,0,0,0]],[22213,[255,22,0,0,0,0,0,0,0,0]],[22381,[255,22,0,0,0,0,0,0,0,0]],[22551,[255,22,0,0,0,0,0,0,0,0]],[22722,[255,22,0,0,0,0,0,0,0,0]],[22874,[255,22,0,0,0,0,0,0,0,0]],[23381,[255,30,3,0,0,0,0,0,0,0]],[23551,[255,30,3,0,0,0,0,0,0,0]],[23879,[255,30,3,0,0,0,0,0,0,0]],[24219,[255,30,3,0,0,0,0,0,0,0]],[24545,[255,30,3,0,0,0,0,0,0,0]],[24878,[255,30,3,0,0,0,0,0,0,0]],[25214,[255,30,3,0,0,0,0,0,0,0]],[25548,[255,30,3,0,0,0,0,0,0,0]],[26214,[255,48,0,0,0,0,0,0,0,0]],[26875,[255,22,0,0,0,0,0,0,0,0]],[27371,[255,22,0,0,0,0,0,0,0,0]],[27550,[255,22,0,0,0,0,0,0,0,0]],[27714,[255,22,0,0,0,0,0,0,0,0]],[27873,[255,22,0,0,0,0,0,0,0,0]],[28047,[255,22,0,0,0,0,0,0,0,0]],[28214,[255,22,0,0,0,0,0,0,0,0]],[28707,[255,22,0,0,0,0,0,0,0,0]],[28886,[255,22,0,0,0,0,0,0,0,0]],[29045,[255,22,0,0,0,0,0,0,0,0]],[29214,[255,22,0,0,0,0,0,0,0,0]],[29378,[255,22,0,0,0,0,0,0,0,0]],[29552,[255,22,0,0,0,0,0,0,0,0]],[30032,[255,16,0,0,0,0,0,0,0,0]],[30214,[255,16,0,0,0,0,0,0,0,0]],[30385,[255,16,0,0,0,0,0,0,0,0]],[30550,[255,16,0,0,0,0,0,0,0,0]],[30709,[255,16,0,0,0,0,0,0,0,0]],[30878,[255,16,0,0,0,0,0,0,0,0]],[31385,[255,16,0,0,0,0,0,0,0,0]],[31544,[255,16,0,0,0,0,0,0,0,0]],[31712,[255,16,0,0,0,0,0,0,0,0]],[31881,[255,16,0,0,0,0,0,0,0,0]],[32045,[255,16,0,0,0,0,0,0,0,0]],[32214,[255,48,0,0,0,0,0,0,0,0]],[32706,[255,22,0,0,0,0,0,0,0,0]],[32880,[255,22,0,0,0,0,0,0,0,0]],[33044,[255,22,0,0,0,0,0,0,0,0]],[33209,[255,22,0,0,0,0,0,0,0,0]],[33377,[255,22,0,0,0,0,0,0,0,0]],[33545,[255,22,0,0,0,0,0,0,0,0]],[34042,[255,30,3,0,0,0,0,0,0,0]],[34209,[255,30,3,0,0,0,0,0,0,0]],[34375,[255,30,3,0,0,0,0,0,0,0]],[34549,[255,30,3,0,0,0,0,0,0,0]],[34877,[255,30,3,0,0,0,0,0,0,0]],[35219,[255,30,3,0,0,0,0,0,0,0]],[35542,[255,30,3,0,0,0,0,0,0,0]],[35880,[255,30,3,0,0,0,0,0,0,0]],[36214,[255,30,3,0,0,0,0,0,0,0]],[36878,[255,48,0,0,0,0,0,0,0,0]],[37539,[255,22,0,0,0,0,0,0,0,0]],[37708,[255,22,0,0,0,0,0,0,0,0]],[37877,[255,22,0,0,0,0,0,0,0,0]],[38055,[255,22,0,0,0,0,0,0,0,0]],[38219,[255,22,0,0,0,0,0,0,0,0]],[38542,[255,22,0,0,0,0,0,0,0,0]],[38846,[255,22,0,0,0,0,0,0,0,0]],[38890,[255,22,0,0,0,0,0,0,0,0]],[38967,[255,22,0,0,0,0,0,0,0,0]],[39059,[255,22,0,0,0,0,0,0,0,0]],[39136,[255,22,0,0,0,0,0,0,0,0]],[39224,[255,22,0,0,0,0,0,0,0,0]],[39305,[255,22,0,0,0,0,0,0,0,0]],[39395,[255,22,0,0,0,0,0,0,0,0]],[39473,[255,22,0,0,0,0,0,0,0,0]],[39555,[255,22,0,0,0,0,0,0,0,0]],[39879,[255,22,0,0,0,0,0,0,0,0]],[40219,[255,19,32,0,0,0,0,0,0,0]],[42551,[255,16,0,0,0,0,0,0,0,0]],[42715,[255,16,0,0,0,0,0,0,0,0]],[42869,[255,16,0,0,0,0,0,0,0,0]],[43052,[255,16,0,0,0,0,0,0,0,0]],[43214,[255,16,0,0,0,0,0,0,0,0]],[43395,[255,16,0,0,0,0,0,0,0,0]],[43549,[255,16,0,0,0,0,0,0,0,0]],[43713,[255,16,0,0,0,0,0,0,0,0]],[43882,[255,16,0,0,0,0,0,0,0,0]],[44056,[255,48,0,0,0,0,0,0,0,0]],[44219,[255,22,0,0,0,0,0,0,0,0]],[44400,[255,22,0,0,0,0,0,0,0,0]],[44552,[255,22,0,0,0,0,0,0,0,0]],[44712,[255,22,0,0,0,0,0,0,0,0]],[44885,[255,22,0,0,0,0,0,0,0,0]],[45054,[255,22,0,0,0,0,0,0,0,0]],[45209,[255,22,0,0,0,0,0,0,0,0]],[45390,[255,22,0,0,0,0,0,0,0,0]],[45556,[255,22,0,0,0,0,0,0,0,0]],[45724,[255,22,0,0,0,0,0,0,0,0]],[45893,[255,22,0,0,0,0,0,0,0,0]],[46052,[255,22,0,0,0,0,0,0,0,0]],[46214,[255,16,0,0,0,0,0,0,0,0]],[46395,[255,16,0,0,0,0,0,0,0,0]],[46554,[255,16,0,0,0,0,0,0,0,0]],[46713,[255,16,0,0,0,0,0,0,0,0]],[46887,[255,16,0,0,0,0,0,0,0,0]],[47046,[255,16,0,0,0,0,0,0,0,0]],[47214,[255,16,0,0,0,0,0,0,0,0]],[47385,[255,16,0,0,0,0,0,0,0,0]],[47543,[255,16,0,0,0,0,0,0,0,0]],[47717,[255,16,0,0,0,0,0,0,0,0]],[47876,[255,16,0,0,0,0,0,0,0,0]],[48045,[255,48,0,0,0,0,0,0,0,0]],[48214,[255,30,3,0,0,0,0,0,0,0]],[48546,[255,30,3,0,0,0,0,0,0,0]],[48879,[255,30,3,0,0,0,0,0,0,0]],[49219,[255,30,3,0,0,0,0,0,0,0]],[49549,[255,30,3,0,0,0,0,0,0,0]],[50219,[255,48,0,0,0,0,0,0,0,0]],[50886,[255,22,0,0,0,0,0,0,0,0]],[51224,[255,22,0,0,0,0,0,0,0,0]],[51551,[255,22,0,0,0,0,0,0,0,0]],[51725,[255,22,0,0,0,0,0,0,0,0]],[51889,[255,22,0,0,0,0,0,0,0,0]],[52053,[255,22,0,0,0,0,0,0,0,0]],[52224,[255,22,0,0,0,0,0,0,0,0]],[53220,[255,30,3,0,0,0,0,0,0,0]],[53553,[255,30,3,0,0,0,0,0,0,0]],[53881,[255,30,3,0,0,0,0,0,0,0]],[54224,[255,30,3,0,0,0,0,0,0,0]],[54556,[255,30,3,0,0,0,0,0,0,0]],[54894,[255,30,3,0,0,0,0,0,0,0]],[55555,[255,48,0,0,0,0,0,0,0,0]],[56224,[255,22,0,0,0,0,0,0,0,0]],[56558,[255,22,0,0,0,0,0,0,0,0]],[56886,[255,22,0,0,0,0,0,0,0,0]],[57060,[255,22,0,0,0,0,0,0,0,0]],[57219,[255,22,0,0,0,0,0,0,0,0]],[57400,[255,22,0,0,0,0,0,0,0,0]],[57556,[255,22,0,0,0,0,0,0,0,0]],[58560,[255,30,3,0,0,0,0,0,0,0]],[58888,[255,30,3,0,0,0,0,0,0,0]],[59228,[255,30,3,0,0,0,0,0,0,0]],[59548,[255,30,3,0,0,0,0,0,0,0]],[59891,[255,30,3,0,0,0,0,0,0,0]],[60224,[255,30,3,0,0,0,0,0,0,0]],[60894,[255,48,0,0,0,0,0,0,0,0]],[61549,[255,22,0,0,0,0,0,0,0,0]],[62054,[255,22,0,0,0,0,0,0,0,0]],[62224,[255,22,0,0,0,0,0,0,0,0]],[62400,[255,22,0,0,0,0,0,0,0,0]],[62561,[255,22,0,0,0,0,0,0,0,0]],[62725,[255,22,0,0,0,0,0,0,0,0]],[62884,[255,22,0,0,0,0,0,0,0,0]],[63400,[255,22,0,0,0,0,0,0,0,0]],[63559,[255,22,0,0,0,0,0,0,0,0]],[63728,[255,22,0,0,0,0,0,0,0,0]],[63892,[255,22,0,0,0,0,0,0,0,0]],[64061,[255,22,0,0,0,0,0,0,0,0]],[64220,[255,22,0,0,0,0,0,0,0,0]],[64722,[255,16,0,0,0,0,0,0,0,0]],[64890,[255,16,0,0,0,0,0,0,0,0]],[65059,[255,16,0,0,0,0,0,0,0,0]],[65228,[255,16,0,0,0,0,0,0,0,0]],[65390,[255,16,0,0,0,0,0,0,0,0]],[65556,[255,16,0,0,0,0,0,0,0,0]],[66053,[255,16,0,0,0,0,0,0,0,0]],[66219,[255,16,0,0,0,0,0,0,0,0]],[66400,[255,16,0,0,0,0,0,0,0,0]],[66555,[255,16,0,0,0,0,0,0,0,0]],[66728,[255,16,0,0,0,0,0,0,0,0]],[66892,[255,48,0,0,0,0,0,0,0,0]],[67390,[255,22,0,0,0,0,0,0,0,0]],[67558,[255,22,0,0,0,0,0,0,0,0]],[67727,[255,22,0,0,0,0,0,0,0,0]],[67891,[255,22,0,0,0,0,0,0,0,0]],[68064,[255,22,0,0,0,0,0,0,0,0]],[68219,[255,22,0,0,0,0,0,0,0,0]],[68725,[255,22,0,0,0,0,0,0,0,0]],[68889,[255,22,0,0,0,0,0,0,0,0]],[69063,[255,22,0,0,0,0,0,0,0,0]],[69224,[255,22,0,0,0,0,0,0,0,0]],[69545,[255,48,0,0,0,0,0,0,0,0]],[69892,[255,30,3,0,0,0,0,0,0,0]],[70214,[255,30,3,0,0,0,0,0,0,0]],[70558,[255,30,3,0,0,0,0,0,0,0]],[70891,[255,30,3,0,0,0,0,0,0,0]],[71556,[255,48,0,0,0,0,0,0,0,0]],[72219,[255,22,0,0,0,0,0,0,0,0]],[72719,[255,22,0,0,0,0,0,0,0,0]],[72897,[255,22,0,0,0,0,0,0,0,0]],[73071,[255,22,0,0,0,0,0,0,0,0]],[73230,[255,22,0,0,0,0,0,0,0,0]],[73400,[255,22,0,0,0,0,0,0,0,0]],[73558,[255,22,0,0,0,0,0,0,0,0]],[74055,[255,22,0,0,0,0,0,0,0,0]],[74224,[255,22,0,0,0,0,0,0,0,0]],[74400,[255,22,0,0,0,0,0,0,0,0]],[74557,[255,22,0,0,0,0,0,0,0,0]],[74725,[255,22,0,0,0,0,0,0,0,0]],[74889,[255,22,0,0,0,0,0,0,0,0]],[75395,[255,16,0,0,0,0,0,0,0,0]],[75555,[255,16,0,0,0,0,0,0,0,0]],[75733,[255,16,0,0,0,0,0,0,0,0]],[75893,[255,16,0,0,0,0,0,0,0,0]],[76052,[255,16,0,0,0,0,0,0,0,0]],[76225,[255,16,0,0,0,0,0,0,0,0]],[76727,[255,16,0,0,0,0,0,0,0,0]],[76886,[255,16,0,0,0,0,0,0,0,0]],[77065,[255,16,0,0,0,0,0,0,0,0]],[77219,[255,16,0,0,0,0,0,0,0,0]],[77395,[255,16,0,0,0,0,0,0,0,0]],[77552,[255,48,0,0,0,0,0,0,0,0]],[78054,[255,22,0,0,0,0,0,0,0,0]],[78224,[255,22,0,0,0,0,0,0,0,0]],[78400,[255,22,0,0,0,0,0,0,0,0]],[78560,[255,22,0,0,0,0,0,0,0,0]],[78724,[255,22,0,0,0,0,0,0,0,0]],[78893,[255,22,0,0,0,0,0,0,0,0]],[79390,[255,22,0,0,0,0,0,0,0,0]],[79558,[255,22,0,0,0,0,0,0,0,0]],[79891,[255,22,0,0,0,0,0,0,0,0]],[80224,[255,30,3,0,0,0,0,0,0,0]],[80562,[255,30,3,0,0,0,0,0,0,0]],[80895,[255,30,3,0,0,0,0,0,0,0]],[81223,[255,30,3,0,0,0,0,0,0,0]],[81555,[255,30,3,0,0,0,0,0,0,0]],[82206,[255,30,3,0,0,0,0,0,0,0]],[82887,[255,19,32,0,0,0,0,0,0,0]]]},{"idx":4,"name":"Hark The Herald Angels Sing","table":"table04","cues":[[338,[255,18,0,0,0,0,0,0,0,0]],[886,[255,18,0,0,0,0,0,0,0,0]],[1439,[255,18,0,0,0,0,0,0,0,0]],[1701,[255,18,0,0,0,0,0,0,0,0]],[2245,[255,18,0,0,0,0,0,0,0,0]],[2500,[255,18,0,0,0,0,0,0,0,0]],[3049,[255,18,0,0,0,0,0,0,0,0]],[3607,[255,18,0,0,0,0,0,0,0,0]],[3904,[255,18,0,0,0,0,0,0,0,0]],[4117,[255,23,0,0,0,0,0,0,0,0]],[4679,[255,20,0,0,0,0,0,0,0,0]],[5227,[255,20,0,0,0,0,0,0,0,0]],[5776,[255,20,0,0,0,0,0,0,0,0]],[6619,[255,20,0,0,0,0,0,0,0,0]],[6829,[255,20,0,0,0,0,0,0,0,0]],[7419,[255,20,0,0,0,0,0,0,0,0]],[7968,[255,23,0,0,0,0,0,0,0,0]],[9092,[255,27,0,0,0,0,0,0,0,0]],[9658,[255,27,0,0,0,0,0,0,0,0]],[10169,[255,27,0,0,0,0,0,0,0,0]],[10941,[255,27,0,0,0,0,0,0,0,0]],[11223,[255,27,0,0,0,0,0,0,0,0]],[11776,[255,27,0,0,0,0,0,0,0,0]],[12333,[255,27,0,0,0,0,0,0,0,0]],[12852,[255,23,0,0,0,0,0,0,0,0]],[13390,[255,21,0,0,0,0,0,0,0,0]],[13955,[255,21,0,0,0,0,0,0,0,0]],[14525,[255,21,0,0,0,0,0,0,0,0]],[15609,[255,21,0,0,0,0,0,0,0,0]],[16136,[255,21,0,0,0,0,0,0,0,0]],[16670,[255,21,0,0,0,0,0,0,0,0]],[17775,[255,21,0,0,0,0,0,0,0,0]],[18390,[255,21,0,0,0,0,0,0,0,0]],[18886,[255,21,0,0,0,0,0,0,0,0]],[19400,[255,21,0,0,0,0,0,0,0,0]],[19953,[255,21,0,0,0,0,0,0,0,0]],[20468,[255,21,0,0,0,0,0,0,0,0]],[21070,[255,21,0,0,0,0,0,0,0,0]],[21585,[255,21,0,0,0,0,0,0,0,0]],[22174,[255,23,0,0,0,0,0,0,0,0]],[22209,[255,18,0,0,0,0,0,0,0,0]],[22717,[255,18,0,0,0,0,0,0,0,0]],[23275,[255,18,0,0,0,0,0,0,0,0]],[23751,[255,18,0,0,0,0,0,0,0,0]],[24318,[255,18,0,0,0,0,0,0,0,0]],[24905,[255,18,0,0,0,0,0,0,0,0]],[25423,[255,18,0,0,0,0,0,0,0,0]],[25972,[255,18,0,0,0,0,0,0,0,0]],[26414,[255,18,0,0,0,0,0,0,0,0]],[26839,[255,18,0,0,0,0,0,0,0,0]],[27349,[255,18,0,0,0,0,0,0,0,0]],[27907,[255,18,0,0,0,0,0,0,0,0]],[28164,[255,18,0,0,0,0,0,0,0,0]],[28650,[255,18,0,0,0,0,0,0,0,0]],[29265,[255,18,0,0,0,0,0,0,0,0]],[29787,[255,23,0,0,0,0,0,0,0,0]],[30852,[255,20,0,0,0,0,0,0,0,0]],[31385,[255,20,0,0,0,0,0,0,0,0]],[31910,[255,20,0,0,0,0,0,0,0,0]],[32758,[255,20,0,0,0,0,0,0,0,0]],[33033,[255,20,0,0,0,0,0,0,0,0]],[33585,[255,20,0,0,0,0,0,0,0,0]],[34131,[255,20,0,0,0,0,0,0,0,0]],[35227,[255,20,0,0,0,0,0,0,0,0]],[35800,[255,20,0,0,0,0,0,0,0,0]],[36380,[255,20,0,0,0,0,0,0,0,0]],[36885,[255,20,0,0,0,0,0,0,0,0]],[37404,[255,20,0,0,0,0,0,0,0,0]],[37985,[255,20,0,0,0,0,0,0,0,0]],[38501,[255,23,0,0,0,0,0,0,0,0]],[39568,[255,27,0,0,0,0,0,0,0,0]],[40116,[255,27,0,0,0,0,0,0,0,0]],[40626,[255,27,0,0,0,0,0,0,0,0]],[41481,[255,27,0,0,0,0,0,0,0,0]],[41819,[255,27,0,0,0,0,0,0,0,0]],[42299,[255,27,0,0,0,0,0,0,0,0]],[42857,[255,27,0,0,0,0,0,0,0,0]],[44014,[255,19,32,0,0,0,0,0,0,0]],[45649,[255,23,0,0,0,0,0,0,0,0]],[45945,[255,23,0,0,0,0,0,0,0,0]],[46185,[255,19,32,0,0,0,0,0,0,0]],[47823,[255,19,32,0,0,0,0,0,0,0]],[48366,[255,19,32,0,0,0,0,0,0,0]],[50553,[255,19,32,0,0,0,0,0,0,0]],[52741,[255,27,0,0,0,0,0,0,0,0]],[53455,[255,27,0,0,0,0,0,0,0,0]],[53884,[255,27,0,0,0,0,0,0,0,0]],[54661,[255,27,0,0,0,0,0,0,0,0]],[54899,[255,27,0,0,0,0,0,0,0,0]],[55481,[255,27,0,0,0,0,0,0,0,0]],[56009,[255,27,0,0,0,0,0,0,0,0]],[56534,[255,23,0,0,0,0,0,0,0,0]],[57087,[255,21,0,0,0,0,0,0,0,0]],[57630,[255,21,0,0,0,0,0,0,0,0]],[58190,[255,21,0,0,0,0,0,0,0,0]],[59017,[255,21,0,0,0,0,0,0,0,0]],[59231,[255,21,0,0,0,0,0,0,0,0]],[59809,[255,21,0,0,0,0,0,0,0,0]],[60428,[255,19,32,0,0,0,0,0,0,0]],[61476,[255,21,0,0,0,0,0,0,0,0]],[62081,[255,21,0,0,0,0,0,0,0,0]],[62600,[255,21,0,0,0,0,0,0,0,0]],[63344,[255,21,0,0,0,0,0,0,0,0]],[63630,[255,21,0,0,0,0,0,0,0,0]],[64180,[255,21,0,0,0,0,0,0,0,0]],[64736,[255,21,0,0,0,0,0,0,0,0]],[65255,[255,23,0,0,0,0,0,0,0,0]],[65846,[255,18,0,0,0,0,0,0,0,0]],[66384,[255,18,0,0,0,0,0,0,0,0]],[66575,[255,18,0,0,0,0,0,0,0,0]],[66690,[255,18,0,0,0,0,0,0,0,0]],[66952,[255,18,0,0,0,0,0,0,0,0]],[68028,[255,18,0,0,0,0,0,0,0,0]],[68590,[255,18,0,0,0,0,0,0,0,0]],[69077,[255,18,0,0,0,0,0,0,0,0]],[70195,[255,18,0,0,0,0,0,0,0,0]],[70800,[255,18,0,0,0,0,0,0,0,0]],[71288,[255,18,0,0,0,0,0,0,0,0]],[71800,[255,18,0,0,0,0,0,0,0,0]],[72361,[255,18,0,0,0,0,0,0,0,0]],[72918,[255,18,0,0,0,0,0,0,0,0]],[73471,[255,18,0,0,0,0,0,0,0,0]],[74000,[255,23,0,0,0,0,0,0,0,0]],[74573,[255,20,0,0,0,0,0,0,0,0]],[75150,[255,20,0,0,0,0,0,0,0,0]],[75689,[255,20,0,0,0,0,0,0,0,0]],[76156,[255,20,0,0,0,0,0,0,0,0]],[76738,[255,20,0,0,0,0,0,0,0,0]],[77310,[255,20,0,0,0,0,0,0,0,0]],[77825,[255,20,0,0,0,0,0,0,0,0]],[78390,[255,20,0,0,0,0,0,0,0,0]],[79000,[255,20,0,0,0,0,0,0,0,0]],[79475,[255,20,0,0,0,0,0,0,0,0]],[80071,[255,20,0,0,0,0,0,0,0,0]],[80567,[255,20,0,0,0,0,0,0,0,0]],[81130,[255,20,0,0,0,0,0,0,0,0]],[81673,[255,20,0,0,0,0,0,0,0,0]],[82174,[255,23,0,0,0,0,0,0,0,0]],[83261,[255,27,0,0,0,0,0,0,0,0]],[83881,[255,27,0,0,0,0,0,0,0,0]],[84424,[255,27,0,0,0,0,0,0,0,0]],[85180,[255,27,0,0,0,0,0,0,0,0]],[85507,[255,27,0,0,0,0,0,0,0,0]],[86000,[255,27,0,0,0,0,0,0,0,0]],[86537,[255,27,0,0,0,0,0,0,0,0]],[87695,[255,27,0,0,0,0,0,0,0,0]],[88225,[255,27,0,0,0,0,0,0,0,0]],[88795,[255,27,0,0,0,0,0,0,0,0]],[89288,[255,27,0,0,0,0,0,0,0,0]],[89809,[255,27,0,0,0,0,0,0,0,0]],[90400,[255,27,0,0,0,0,0,0,0,0]],[90971,[255,23,0,0,0,0,0,0,0,0]],[91972,[255,21,0,0,0,0,0,0,0,0]],[92530,[255,21,0,0,0,0,0,0,0,0]],[93036,[255,21,0,0,0,0,0,0,0,0]],[93913,[255,21,0,0,0,0,0,0,0,0]],[94204,[255,21,0,0,0,0,0,0,0,0]],[94800,[255,21,0,0,0,0,0,0,0,0]],[95162,[255,19,32,0,0,0,0,0,0,0]],[96340,[255,21,0,0,0,0,0,0,0,0]],[96908,[255,21,0,0,0,0,0,0,0,0]],[97480,[255,21,0,0,0,0,0,0,0,0]],[97971,[255,21,0,0,0,0,0,0,0,0]],[98510,[255,21,0,0,0,0,0,0,0,0]],[99077,[255,21,0,0,0,0,0,0,0,0]],[99678,[255,23,0,0,0,0,0,0,0,0]],[101852,[255,20,0,0,0,0,0,0,0,0]],[102400,[255,20,0,0,0,0,0,0,0,0]],[102939,[255,20,0,0,0,0,0,0,0,0]],[103800,[255,20,0,0,0,0,0,0,0,0]],[104112,[255,20,0,0,0,0,0,0,0,0]],[104675,[255,20,0,0,0,0,0,0,0,0]],[105219,[255,19,32,0,0,0,0,0,0,0]]]},{"idx":5,"name":"Jingle Bells","table":"table07","cues":[[239,[255,19,0,0,0,0,0,0,0,0]],[832,[255,30,3,0,0,0,0,0,0,0]],[1404,[255,30,3,0,0,0,0,0,0,0]],[1971,[255,30,3,0,0,0,0,0,0,0]],[2548,[255,30,3,0,0,0,0,0,0,0]],[3115,[255,30,3,0,0,0,0,0,0,0]],[3687,[255,30,3,0,0,0,0,0,0,0]],[4268,[255,30,3,0,0,0,0,0,0,0]],[4826,[255,30,3,0,0,0,0,0,0,0]],[5409,[255,30,3,0,0,0,0,0,0,0]],[5893,[255,19,0,0,0,0,0,0,0,0]],[6552,[255,19,0,0,0,0,0,0,0,0]],[7128,[255,19,0,0,0,0,0,0,0,0]],[7941,[255,19,0,0,0,0,0,0,0,0]],[8204,[255,19,0,0,0,0,0,0,0,0]],[8556,[255,30,3,0,0,0,0,0,0,0]],[8830,[255,30,3,0,0,0,0,0,0,0]],[9092,[255,30,3,0,0,0,0,0,0,0]],[9386,[255,30,3,0,0,0,0,0,0,0]],[9629,[255,19,0,0,0,0,0,0,0,0]],[9895,[255,19,0,0,0,0,0,0,0,0]],[10200,[255,19,0,0,0,0,0,0,0,0]],[10485,[255,19,0,0,0,0,0,0,0,0]],[10800,[255,30,3,0,0,0,0,0,0,0]],[11118,[255,30,3,0,0,0,0,0,0,0]],[11400,[255,30,3,0,0,0,0,0,0,0]],[11690,[255,30,3,0,0,0,0,0,0,0]],[11912,[255,19,0,0,0,0,0,0,0,0]],[12204,[255,19,0,0,0,0,0,0,0,0]],[12484,[255,19,0,0,0,0,0,0,0,0]],[12773,[255,19,0,0,0,0,0,0,0,0]],[13061,[255,30,3,0,0,0,0,0,0,0]],[13409,[255,30,3,0,0,0,0,0,0,0]],[13690,[255,30,3,0,0,0,0,0,0,0]],[13917,[255,30,3,0,0,0,0,0,0,0]],[14195,[255,19,0,0,0,0,0,0,0,0]],[14489,[255,19,0,0,0,0,0,0,0,0]],[14768,[255,19,0,0,0,0,0,0,0,0]],[15051,[255,19,0,0,0,0,0,0,0,0]],[15414,[255,30,3,0,0,0,0,0,0,0]],[15699,[255,30,3,0,0,0,0,0,0,0]],[15990,[255,30,3,0,0,0,0,0,0,0]],[16200,[255,30,3,0,0,0,0,0,0,0]],[16266,[255,30,3,0,0,0,0,0,0,0]],[16479,[255,19,0,0,0,0,0,0,0,0]],[16767,[255,19,0,0,0,0,0,0,0,0]],[17056,[255,19,0,0,0,0,0,0,0,0]],[17320,[255,19,0,0,0,0,0,0,0,0]],[17689,[255,30,3,0,0,0,0,0,0,0]],[17985,[255,30,3,0,0,0,0,0,0,0]],[18266,[255,30,3,0,0,0,0,0,0,0]],[18554,[255,19,0,0,0,0,0,0,0,0]],[19112,[255,30,3,0,0,0,0,0,0,0]],[19680,[255,30,3,0,0,0,0,0,0,0]],[20218,[255,30,3,0,0,0,0,0,0,0]],[20771,[255,30,3,0,0,0,0,0,0,0]],[21343,[255,30,3,0,0,0,0,0,0,0]],[21945,[255,30,3,0,0,0,0,0,0,0]],[22553,[255,30,3,0,0,0,0,0,0,0]],[23130,[255,30,3,0,0,0,0,0,0,0]],[23693,[255,30,3,0,0,0,0,0,0,0]],[24265,[255,30,3,0,0,0,0,0,0,0]],[24790,[255,30,3,0,0,0,0,0,0,0]],[25343,[255,30,3,0,0,0,0,0,0,0]],[25929,[255,30,3,0,0,0,0,0,0,0]],[26491,[255,30,3,0,0,0,0,0,0,0]],[27125,[255,19,0,0,0,0,0,0,0,0]],[27701,[255,16,0,0,0,0,0,0,0,0]],[27891,[255,16,0,0,0,0,0,0,0,0]],[28200,[255,16,0,0,0,0,0,0,0,0]],[28775,[255,16,0,0,0,0,0,0,0,0]],[29044,[255,16,0,0,0,0,0,0,0,0]],[29337,[255,16,0,0,0,0,0,0,0,0]],[29909,[255,16,0,0,0,0,0,0,0,0]],[30200,[255,16,0,0,0,0,0,0,0,0]],[30481,[255,16,0,0,0,0,0,0,0,0]],[30925,[255,19,32,0,0,0,0,0,0,0]],[32200,[255,19,0,0,0,0,0,0,0,0]],[32471,[255,16,0,0,0,0,0,0,0,0]],[32769,[255,16,0,0,0,0,0,0,0,0]],[33340,[255,16,0,0,0,0,0,0,0,0]],[33656,[255,16,0,0,0,0,0,0,0,0]],[33973,[255,16,0,0,0,0,0,0,0,0]],[34209,[255,16,0,0,0,0,0,0,0,0]],[34772,[255,16,0,0,0,0,0,0,0,0]],[35056,[255,16,0,0,0,0,0,0,0,0]],[35339,[255,16,0,0,0,0,0,0,0,0]],[35628,[255,16,0,0,0,0,0,0,0,0]],[36266,[255,19,32,0,0,0,0,0,0,0]],[36800,[255,19,0,0,0,0,0,0,0,0]],[37055,[255,16,0,0,0,0,0,0,0,0]],[37344,[255,16,0,0,0,0,0,0,0,0]],[37897,[255,16,0,0,0,0,0,0,0,0]],[38200,[255,16,0,0,0,0,0,0,0,0]],[38504,[255,16,0,0,0,0,0,0,0,0]],[39050,[255,16,0,0,0,0,0,0,0,0]],[39409,[255,16,0,0,0,0,0,0,0,0]],[39698,[255,16,0,0,0,0,0,0,0,0]],[40200,[255,19,32,0,0,0,0,0,0,0]],[41388,[255,16,0,0,0,0,0,0,0,0]],[41697,[255,16,0,0,0,0,0,0,0,0]],[42000,[255,16,0,0,0,0,0,0,0,0]],[42553,[255,16,0,0,0,0,0,0,0,0]],[42771,[255,16,0,0,0,0,0,0,0,0]],[43054,[255,16,0,0,0,0,0,0,0,0]],[43347,[255,16,0,0,0,0,0,0,0,0]],[43688,[255,16,0,0,0,0,0,0,0,0]],[43985,[255,16,0,0,0,0,0,0,0,0]],[44209,[255,16,0,0,0,0,0,0,0,0]],[44463,[255,16,0,0,0,0,0,0,0,0]],[44781,[255,30,3,0,0,0,0,0,0,0]],[45980,[255,16,0,0,0,0,0,0,0,0]],[46200,[255,16,0,0,0,0,0,0,0,0]],[46548,[255,16,0,0,0,0,0,0,0,0]],[46841,[255,16,0,0,0,0,0,0,0,0]],[47120,[255,30,3,0,0,0,0,0,0,0]],[48200,[255,16,0,0,0,0,0,0,0,0]],[48481,[255,16,0,0,0,0,0,0,0,0]],[48769,[255,16,0,0,0,0,0,0,0,0]],[49053,[255,16,0,0,0,0,0,0,0,0]],[49337,[255,30,3,0,0,0,0,0,0,0]],[50481,[255,19,0,0,0,0,0,0,0,0]],[50764,[255,16,0,0,0,0,0,0,0,0]],[51053,[255,16,0,0,0,0,0,0,0,0]],[51332,[255,16,0,0,0,0,0,0,0,0]],[51691,[255,30,3,0,0,0,0,0,0,0]],[52769,[255,16,0,0,0,0,0,0,0,0]],[53043,[255,16,0,0,0,0,0,0,0,0]],[53336,[255,16,0,0,0,0,0,0,0,0]],[53629,[255,16,0,0,0,0,0,0,0,0]],[53889,[255,30,3,0,0,0,0,0,0,0]],[55057,[255,16,0,0,0,0,0,0,0,0]],[55331,[255,16,0,0,0,0,0,0,0,0]],[55629,[255,16,0,0,0,0,0,0,0,0]],[55927,[255,16,0,0,0,0,0,0,0,0]],[56267,[255,30,3,0,0,0,0,0,0,0]],[57359,[255,16,0,0,0,0,0,0,0,0]],[57628,[255,16,0,0,0,0,0,0,0,0]],[57912,[255,16,0,0,0,0,0,0,0,0]],[58200,[255,16,0,0,0,0,0,0,0,0]],[58479,[255,30,3,0,0,0,0,0,0,0]],[59400,[255,19,0,0,0,0,0,0,0,0]],[59685,[255,16,0,0,0,0,0,0,0,0]],[59985,[255,16,0,0,0,0,0,0,0,0]],[60200,[255,16,0,0,0,0,0,0,0,0]],[60488,[255,16,0,0,0,0,0,0,0,0]],[60772,[255,16,0,0,0,0,0,0,0,0]],[61117,[255,16,0,0,0,0,0,0,0,0]],[61363,[255,16,0,0,0,0,0,0,0,0]],[61693,[255,16,0,0,0,0,0,0,0,0]],[61985,[255,16,0,0,0,0,0,0,0,0]],[62265,[255,16,0,0,0,0,0,0,0,0]],[62554,[255,16,0,0,0,0,0,0,0,0]],[62766,[255,16,0,0,0,0,0,0,0,0]],[63055,[255,16,0,0,0,0,0,0,0,0]],[63668,[255,19,0,0,0,0,0,0,0,0]],[64171,[255,25,0,0,0,0,0,0,0,0]],[64464,[255,25,0,0,0,0,0,0,0,0]],[64776,[255,25,0,0,0,0,0,0,0,0]],[65348,[255,25,0,0,0,0,0,0,0,0]],[65631,[255,25,0,0,0,0,0,0,0,0]],[65915,[255,25,0,0,0,0,0,0,0,0]],[66482,[255,25,0,0,0,0,0,0,0,0]],[66763,[255,25,0,0,0,0,0,0,0,0]],[67059,[255,25,0,0,0,0,0,0,0,0]],[67633,[255,25,0,0,0,0,0,0,0,0]],[68209,[255,48,0,0,0,0,0,0,0,0]],[68775,[255,25,0,0,0,0,0,0,0,0]],[69076,[255,25,0,0,0,0,0,0,0,0]],[69357,[255,25,0,0,0,0,0,0,0,0]],[69914,[255,25,0,0,0,0,0,0,0,0]],[70223,[255,25,0,0,0,0,0,0,0,0]],[70496,[255,25,0,0,0,0,0,0,0,0]],[71058,[255,25,0,0,0,0,0,0,0,0]],[71351,[255,25,0,0,0,0,0,0,0,0]],[71623,[255,25,0,0,0,0,0,0,0,0]],[71914,[255,25,0,0,0,0,0,0,0,0]],[72268,[255,25,0,0,0,0,0,0,0,0]],[72779,[255,48,0,0,0,0,0,0,0,0]],[73337,[255,16,0,0,0,0,0,0,0,0]],[73628,[255,16,0,0,0,0,0,0,0,0]],[73918,[255,16,0,0,0,0,0,0,0,0]],[74467,[255,16,0,0,0,0,0,0,0,0]],[74774,[255,16,0,0,0,0,0,0,0,0]],[75119,[255,16,0,0,0,0,0,0,0,0]],[75634,[255,16,0,0,0,0,0,0,0,0]],[75937,[255,16,0,0,0,0,0,0,0,0]],[76214,[255,16,0,0,0,0,0,0,0,0]],[76825,[255,16,0,0,0,0,0,0,0,0]],[77404,[255,48,0,0,0,0,0,0,0,0]],[77913,[255,16,0,0,0,0,0,0,0,0]],[78195,[255,16,0,0,0,0,0,0,0,0]],[78504,[255,16,0,0,0,0,0,0,0,0]],[79066,[255,16,0,0,0,0,0,0,0,0]],[79340,[255,48,0,0,0,0,0,0,0,0]],[79629,[255,16,0,0,0,0,0,0,0,0]],[80258,[255,16,0,0,0,0,0,0,0,0]],[80494,[255,16,0,0,0,0,0,0,0,0]],[80773,[255,16,0,0,0,0,0,0,0,0]],[81354,[255,48,0,0,0,0,0,0,0,0]],[82546,[255,30,3,0,0,0,0,0,0,0]],[83066,[255,30,3,0,0,0,0,0,0,0]],[83633,[255,30,3,0,0,0,0,0,0,0]],[84200,[255,30,3,0,0,0,0,0,0,0]],[84767,[255,30,3,0,0,0,0,0,0,0]],[85354,[255,30,3,0,0,0,0,0,0,0]],[85982,[255,30,3,0,0,0,0,0,0,0]],[86550,[255,48,0,0,0,0,0,0,0,0]],[87054,[255,30,3,0,0,0,0,0,0,0]],[87635,[255,30,3,0,0,0,0,0,0,0]],[88200,[255,30,3,0,0,0,0,0,0,0]],[88841,[255,30,3,0,0,0,0,0,0,0]],[89347,[255,30,3,0,0,0,0,0,0,0]],[89919,[255,30,3,0,0,0,0,0,0,0]],[90557,[255,30,3,0,0,0,0,0,0,0]],[91100,[255,48,0,0,0,0,0,0,0,0]],[91635,[255,30,3,0,0,0,0,0,0,0]],[92268,[255,30,3,0,0,0,0,0,0,0]],[92845,[255,30,3,0,0,0,0,0,0,0]],[93409,[255,30,3,0,0,0,0,0,0,0]],[93985,[255,30,3,0,0,0,0,0,0,0]],[94547,[255,30,3,0,0,0,0,0,0,0]],[95062,[255,30,3,0,0,0,0,0,0,0]],[95634,[255,30,3,0,0,0,0,0,0,0]],[96209,[255,30,3,0,0,0,0,0,0,0]],[96849,[255,48,0,0,0,0,0,0,0,0]],[97414,[255,30,3,0,0,0,0,0,0,0]],[97985,[255,30,3,0,0,0,0,0,0,0]],[98551,[255,30,3,0,0,0,0,0,0,0]],[99066,[255,30,3,0,0,0,0,0,0,0]],[99633,[255,30,3,0,0,0,0,0,0,0]],[100262,[255,30,3,0,0,0,0,0,0,0]],[100772,[255,30,3,0,0,0,0,0,0,0]],[101370,[255,30,3,0,0,0,0,0,0,0]],[101985,[255,30,3,0,0,0,0,0,0,0]],[102545,[255,30,3,0,0,0,0,0,0,0]],[103056,[255,30,3,0,0,0,0,0,0,0]],[103628,[255,30,3,0,0,0,0,0,0,0]],[104266,[255,30,3,0,0,0,0,0,0,0]],[104772,[255,48,0,0,0,0,0,0,0,0]],[105320,[255,25,0,0,0,0,0,0,0,0]],[105609,[255,25,0,0,0,0,0,0,0,0]],[105916,[255,25,0,0,0,0,0,0,0,0]],[106497,[255,25,0,0,0,0,0,0,0,0]],[106781,[255,25,0,0,0,0,0,0,0,0]],[107060,[255,25,0,0,0,0,0,0,0,0]],[107628,[255,25,0,0,0,0,0,0,0,0]],[107920,[255,25,0,0,0,0,0,0,0,0]],[108195,[255,25,0,0,0,0,0,0,0,0]],[108776,[255,48,0,0,0,0,0,0,0,0]],[109915,[255,25,0,0,0,0,0,0,0,0]],[110200,[255,25,0,0,0,0,0,0,0,0]],[110487,[255,25,0,0,0,0,0,0,0,0]],[111064,[255,25,0,0,0,0,0,0,0,0]],[111366,[255,25,0,0,0,0,0,0,0,0]],[111618,[255,25,0,0,0,0,0,0,0,0]],[111924,[255,25,0,0,0,0,0,0,0,0]],[112200,[255,25,0,0,0,0,0,0,0,0]],[112487,[255,25,0,0,0,0,0,0,0,0]],[112775,[255,25,0,0,0,0,0,0,0,0]],[113059,[255,25,0,0,0,0,0,0,0,0]],[113368,[255,25,0,0,0,0,0,0,0,0]],[113971,[255,48,0,0,0,0,0,0,0,0]],[114482,[255,16,0,0,0,0,0,0,0,0]],[114770,[255,16,0,0,0,0,0,0,0,0]],[115058,[255,16,0,0,0,0,0,0,0,0]],[115600,[255,16,0,0,0,0,0,0,0,0]],[115914,[255,16,0,0,0,0,0,0,0,0]],[116259,[255,16,0,0,0,0,0,0,0,0]],[116774,[255,16,0,0,0,0,0,0,0,0]],[117077,[255,16,0,0,0,0,0,0,0,0]],[117361,[255,16,0,0,0,0,0,0,0,0]],[117914,[255,48,0,0,0,0,0,0,0,0]],[119053,[255,16,0,0,0,0,0,0,0,0]],[119327,[255,16,0,0,0,0,0,0,0,0]],[119705,[255,16,0,0,0,0,0,0,0,0]],[120296,[255,16,0,0,0,0,0,0,0,0]],[120627,[255,16,0,0,0,0,0,0,0,0]],[121000,[255,16,0,0,0,0,0,0,0,0]],[121390,[255,16,0,0,0,0,0,0,0,0]],[121790,[255,16,0,0,0,0,0,0,0,0]],[122200,[255,16,0,0,0,0,0,0,0,0]],[122664,[255,16,0,0,0,0,0,0,0,0]],[123085,[255,16,0,0,0,0,0,0,0,0]],[123662,[255,16,0,0,0,0,0,0,0,0]],[123709,[255,19,32,0,0,0,0,0,0,0]]]},{"idx":6,"name":"O Christmas Tree","table":"table06","cues":[[258,[255,48,0,0,0,0,0,0,0,0]],[871,[255,16,0,0,0,0,0,0,0,0]],[1199,[255,16,0,0,0,0,0,0,0,0]],[1440,[255,16,0,0,0,0,0,0,0,0]],[2113,[255,16,0,0,0,0,0,0,0,0]],[2618,[255,16,0,0,0,0,0,0,0,0]],[2970,[255,16,0,0,0,0,0,0,0,0]],[3243,[255,16,0,0,0,0,0,0,0,0]],[3869,[255,48,0,0,0,0,0,0,0,0]],[4458,[255,18,0,0,0,0,0,0,0,0]],[4783,[255,18,0,0,0,0,0,0,0,0]],[5037,[255,18,0,0,0,0,0,0,0,0]],[5635,[255,18,0,0,0,0,0,0,0,0]],[6200,[255,18,0,0,0,0,0,0,0,0]],[6544,[255,18,0,0,0,0,0,0,0,0]],[6595,[255,18,0,0,0,0,0,0,0,0]],[6862,[255,18,0,0,0,0,0,0,0,0]],[7418,[255,48,0,0,0,0,0,0,0,0]],[8064,[255,16,0,0,0,0,0,0,0,0]],[8404,[255,16,0,0,0,0,0,0,0,0]],[8691,[255,16,0,0,0,0,0,0,0,0]],[9390,[255,16,0,0,0,0,0,0,0,0]],[9900,[255,16,0,0,0,0,0,0,0,0]],[10200,[255,16,0,0,0,0,0,0,0,0]],[10456,[255,16,0,0,0,0,0,0,0,0]],[11068,[255,48,0,0,0,0,0,0,0,0]],[11643,[255,18,0,0,0,0,0,0,0,0]],[12014,[255,18,0,0,0,0,0,0,0,0]],[12245,[255,18,0,0,0,0,0,0,0,0]],[12976,[255,18,0,0,0,0,0,0,0,0]],[13385,[255,18,0,0,0,0,0,0,0,0]],[13771,[255,18,0,0,0,0,0,0,0,0]],[14100,[255,18,0,0,0,0,0,0,0,0]],[14628,[255,48,0,0,0,0,0,0,0,0]],[15291,[255,16,0,0,0,0,0,0,0,0]],[15600,[255,16,0,0,0,0,0,0,0,0]],[15823,[255,16,0,0,0,0,0,0,0,0]],[16501,[255,16,0,0,0,0,0,0,0,0]],[17033,[255,16,0,0,0,0,0,0,0,0]],[17390,[255,16,0,0,0,0,0,0,0,0]],[17669,[255,16,0,0,0,0,0,0,0,0]],[18295,[255,48,0,0,0,0,0,0,0,0]],[18851,[255,18,0,0,0,0,0,0,0,0]],[19171,[255,18,0,0,0,0,0,0,0,0]],[19430,[255,18,0,0,0,0,0,0,0,0]],[20060,[255,18,0,0,0,0,0,0,0,0]],[20647,[255,18,0,0,0,0,0,0,0,0]],[21009,[255,18,0,0,0,0,0,0,0,0]],[21237,[255,18,0,0,0,0,0,0,0,0]],[21840,[255,48,0,0,0,0,0,0,0,0]],[22429,[255,16,0,0,0,0,0,0,0,0]],[22768,[255,16,0,0,0,0,0,0,0,0]],[23026,[255,16,0,0,0,0,0,0,0,0]],[23800,[255,16,0,0,0,0,0,0,0,0]],[24272,[255,16,0,0,0,0,0,0,0,0]],[24534,[255,16,0,0,0,0,0,0,0,0]],[24886,[255,16,0,0,0,0,0,0,0,0]],[25495,[255,48,0,0,0,0,0,0,0,0]],[26050,[255,18,0,0,0,0,0,0,0,0]],[26365,[255,18,0,0,0,0,0,0,0,0]],[26684,[255,18,0,0,0,0,0,0,0,0]],[27308,[255,18,0,0,0,0,0,0,0,0]],[27818,[255,18,0,0,0,0,0,0,0,0]],[28190,[255,18,0,0,0,0,0,0,0,0]],[28484,[255,18,0,0,0,0,0,0,0,0]],[29071,[255,48,0,0,0,0,0,0,0,0]],[29623,[255,16,0,0,0,0,0,0,0,0]],[29933,[255,16,0,0,0,0,0,0,0,0]],[30225,[255,16,0,0,0,0,0,0,0,0]],[30865,[255,16,0,0,0,0,0,0,0,0]],[31468,[255,16,0,0,0,0,0,0,0,0]],[31765,[255,16,0,0,0,0,0,0,0,0]],[32052,[255,16,0,0,0,0,0,0,0,0]],[32674,[255,48,0,0,0,0,0,0,0,0]],[33288,[255,18,0,0,0,0,0,0,0,0]],[33600,[255,18,0,0,0,0,0,0,0,0]],[33836,[255,18,0,0,0,0,0,0,0,0]],[34488,[255,18,0,0,0,0,0,0,0,0]],[35100,[255,18,0,0,0,0,0,0,0,0]],[35400,[255,18,0,0,0,0,0,0,0,0]],[35677,[255,23,0,0,0,0,0,0,0,0]],[36255,[255,23,0,0,0,0,0,0,0,0]],[36920,[255,23,0,0,0,0,0,0,0,0]],[37522,[255,23,0,0,0,0,0,0,0,0]],[38054,[255,23,0,0,0,0,0,0,0,0]],[38695,[255,48,0,0,0,0,0,0,0,0]],[39500,[255,25,0,0,0,0,0,0,0,0]],[39809,[255,25,0,0,0,0,0,0,0,0]],[40102,[255,25,0,0,0,0,0,0,0,0]],[40429,[255,25,0,0,0,0,0,0,0,0]],[41133,[255,25,0,0,0,0,0,0,0,0]],[41670,[255,25,0,0,0,0,0,0,0,0]],[42113,[255,25,0,0,0,0,0,0,0,0]],[42941,[255,23,0,0,0,0,0,0,0,0]],[43478,[255,23,0,0,0,0,0,0,0,0]],[44076,[255,23,0,0,0,0,0,0,0,0]],[44749,[255,23,0,0,0,0,0,0,0,0]],[45357,[255,23,0,0,0,0,0,0,0,0]],[45959,[255,48,0,0,0,0,0,0,0,0]],[46800,[255,25,0,0,0,0,0,0,0,0]],[47103,[255,25,0,0,0,0,0,0,0,0]],[47385,[255,25,0,0,0,0,0,0,0,0]],[47720,[255,25,0,0,0,0,0,0,0,0]],[48360,[255,25,0,0,0,0,0,0,0,0]],[48916,[255,25,0,0,0,0,0,0,0,0]],[49385,[255,25,0,0,0,0,0,0,0,0]],[50394,[255,20,0,0,0,0,0,0,0,0]],[50681,[255,20,0,0,0,0,0,0,0,0]],[50945,[255,20,0,0,0,0,0,0,0,0]],[51289,[255,20,0,0,0,0,0,0,0,0]],[52223,[255,20,0,0,0,0,0,0,0,0]],[52470,[255,20,0,0,0,0,0,0,0,0]],[52790,[255,20,0,0,0,0,0,0,0,0]],[53129,[255,20,0,0,0,0,0,0,0,0]],[54363,[255,21,0,0,0,0,0,0,0,0]],[54942,[255,21,0,0,0,0,0,0,0,0]],[55802,[255,21,0,0,0,0,0,0,0,0]],[56147,[255,21,0,0,0,0,0,0,0,0]],[56430,[255,21,0,0,0,0,0,0,0,0]],[56769,[255,21,0,0,0,0,0,0,0,0]],[57296,[255,23,0,0,0,0,0,0,0,0]],[57842,[255,23,0,0,0,0,0,0,0,0]],[58506,[255,23,0,0,0,0,0,0,0,0]],[59165,[255,23,0,0,0,0,0,0,0,0]],[59688,[255,23,0,0,0,0,0,0,0,0]],[60333,[255,48,0,0,0,0,0,0,0,0]],[61200,[255,22,0,0,0,0,0,0,0,0]],[61538,[255,22,0,0,0,0,0,0,0,0]],[61824,[255,22,0,0,0,0,0,0,0,0]],[62111,[255,22,0,0,0,0,0,0,0,0]],[62756,[255,22,0,0,0,0,0,0,0,0]],[63390,[255,22,0,0,0,0,0,0,0,0]],[63985,[255,22,0,0,0,0,0,0,0,0]],[64559,[255,23,0,0,0,0,0,0,0,0]],[65092,[255,23,0,0,0,0,0,0,0,0]],[65673,[255,23,0,0,0,0,0,0,0,0]],[65985,[255,23,0,0,0,0,0,0,0,0]],[66289,[255,23,0,0,0,0,0,0,0,0]],[66880,[255,48,0,0,0,0,0,0,0,0]],[67454,[255,22,0,0,0,0,0,0,0,0]],[67771,[255,22,0,0,0,0,0,0,0,0]],[68044,[255,22,0,0,0,0,0,0,0,0]],[68678,[255,22,0,0,0,0,0,0,0,0]],[68884,[255,22,0,0,0,0,0,0,0,0]],[69067,[255,22,0,0,0,0,0,0,0,0]],[69244,[255,22,0,0,0,0,0,0,0,0]],[69460,[255,22,0,0,0,0,0,0,0,0]],[69657,[255,22,0,0,0,0,0,0,0,0]],[69844,[255,22,0,0,0,0,0,0,0,0]],[70032,[255,22,0,0,0,0,0,0,0,0]],[70267,[255,22,0,0,0,0,0,0,0,0]],[70428,[255,22,0,0,0,0,0,0,0,0]],[70670,[255,22,0,0,0,0,0,0,0,0]],[70840,[255,22,0,0,0,0,0,0,0,0]],[71102,[255,22,0,0,0,0,0,0,0,0]],[71414,[255,22,0,0,0,0,0,0,0,0]],[71734,[255,22,0,0,0,0,0,0,0,0]],[72034,[255,22,0,0,0,0,0,0,0,0]],[72269,[255,22,0,0,0,0,0,0,0,0]],[72446,[255,22,0,0,0,0,0,0,0,0]],[72677,[255,22,0,0,0,0,0,0,0,0]],[72912,[255,22,0,0,0,0,0,0,0,0]],[73065,[255,22,0,0,0,0,0,0,0,0]],[73104,[255,22,0,0,0,0,0,0,0,0]],[73320,[255,22,0,0,0,0,0,0,0,0]],[73526,[255,48,0,0,0,0,0,0,0,0]],[74074,[255,16,0,0,0,0,0,0,0,0]],[74448,[255,16,0,0,0,0,0,0,0,0]],[74976,[255,16,0,0,0,0,0,0,0,0]],[75360,[255,16,0,0,0,0,0,0,0,0]],[75628,[255,16,0,0,0,0,0,0,0,0]],[75932,[255,16,0,0,0,0,0,0,0,0]],[76525,[255,16,0,0,0,0,0,0,0,0]],[76834,[255,16,0,0,0,0,0,0,0,0]],[77400,[255,48,0,0,0,0,0,0,0,0]],[77736,[255,30,3,0,0,0,0,0,0,0]],[78317,[255,30,3,0,0,0,0,0,0,0]],[78934,[255,30,3,0,0,0,0,0,0,0]],[79527,[255,30,3,0,0,0,0,0,0,0]],[80136,[255,30,3,0,0,0,0,0,0,0]],[80700,[255,30,3,0,0,0,0,0,0,0]],[81294,[255,30,3,0,0,0,0,0,0,0]],[81900,[255,30,3,0,0,0,0,0,0,0]],[82469,[255,30,3,0,0,0,0,0,0,0]],[83074,[255,30,3,0,0,0,0,0,0,0]],[83700,[255,30,3,0,0,0,0,0,0,0]],[84337,[255,48,0,0,0,0,0,0,0,0]],[84900,[255,27,0,0,0,0,0,0,0,0]],[85500,[255,27,0,0,0,0,0,0,0,0]],[86120,[255,27,0,0,0,0,0,0,0,0]],[86780,[255,27,0,0,0,0,0,0,0,0]],[87337,[255,27,0,0,0,0,0,0,0,0]],[87970,[255,27,0,0,0,0,0,0,0,0]],[88501,[255,27,0,0,0,0,0,0,0,0]],[89137,[255,27,0,0,0,0,0,0,0,0]],[89701,[255,27,0,0,0,0,0,0,0,0]],[90295,[255,27,0,0,0,0,0,0,0,0]],[90938,[255,48,0,0,0,0,0,0,0,0]],[91523,[255,16,0,0,0,0,0,0,0,0]],[91844,[255,16,0,0,0,0,0,0,0,0]],[92105,[255,16,0,0,0,0,0,0,0,0]],[92433,[255,16,0,0,0,0,0,0,0,0]],[92680,[255,16,0,0,0,0,0,0,0,0]],[93283,[255,16,0,0,0,0,0,0,0,0]],[94580,[255,16,0,0,0,0,0,0,0,0]],[94844,[255,16,0,0,0,0,0,0,0,0]],[95068,[255,16,0,0,0,0,0,0,0,0]],[95334,[255,16,0,0,0,0,0,0,0,0]],[95638,[255,48,0,0,0,0,0,0,0,0]],[96260,[255,30,3,0,0,0,0,0,0,0]],[96846,[255,30,3,0,0,0,0,0,0,0]],[97182,[255,30,3,0,0,0,0,0,0,0]],[97464,[255,30,3,0,0,0,0,0,0,0]],[98086,[255,30,3,0,0,0,0,0,0,0]],[98664,[255,30,3,0,0,0,0,0,0,0]],[98962,[255,30,3,0,0,0,0,0,0,0]],[99267,[255,48,0,0,0,0,0,0,0,0]],[99854,[255,27,0,0,0,0,0,0,0,0]],[100430,[255,27,0,0,0,0,0,0,0,0]],[100728,[255,27,0,0,0,0,0,0,0,0]],[101016,[255,27,0,0,0,0,0,0,0,0]],[101670,[255,27,0,0,0,0,0,0,0,0]],[102257,[255,27,0,0,0,0,0,0,0,0]],[102563,[255,27,0,0,0,0,0,0,0,0]],[102862,[255,48,0,0,0,0,0,0,0,0]],[103466,[255,16,0,0,0,0,0,0,0,0]],[104081,[255,16,0,0,0,0,0,0,0,0]],[104383,[255,16,0,0,0,0,0,0,0,0]],[104632,[255,16,0,0,0,0,0,0,0,0]],[105297,[255,16,0,0,0,0,0,0,0,0]],[105880,[255,16,0,0,0,0,0,0,0,0]],[106200,[255,16,0,0,0,0,0,0,0,0]],[106496,[255,16,0,0,0,0,0,0,0,0]],[107047,[255,16,0,0,0,0,0,0,0,0]],[108478,[255,19,48,1,0,0,0,0,0,0]]]},{"idx":7,"name":"We Wish You A Merry Christmas","table":"table05","cues":[[774,[255,17,32,0,0,0,0,0,0,0]],[2209,[255,17,32,0,0,0,0,0,0,0]],[3385,[255,17,32,0,0,0,0,0,0,0]],[4799,[255,17,32,0,0,0,0,0,0,0]],[8078,[255,17,32,0,0,0,0,0,0,0]],[8491,[255,17,32,0,0,0,0,0,0,0]],[9492,[255,17,32,0,0,0,0,0,0,0]],[10483,[255,17,32,0,0,0,0,0,0,0]],[11650,[255,17,32,0,0,0,0,0,0,0]],[12868,[255,19,32,0,0,0,0,0,0,0]],[13954,[255,19,32,0,0,0,0,0,0,0]],[14986,[255,19,32,0,0,0,0,0,0,0]],[16008,[255,19,32,0,0,0,0,0,0,0]],[17061,[255,19,32,0,0,0,0,0,0,0]],[17909,[255,19,32,0,0,0,0,0,0,0]],[19104,[255,19,32,0,0,0,0,0,0,0]],[20230,[255,19,32,0,0,0,0,0,0,0]],[21053,[255,23,0,0,0,0,0,0,0,0]],[21311,[255,23,0,0,0,0,0,0,0,0]],[22302,[255,23,0,0,0,0,0,0,0,0]],[23386,[255,23,0,0,0,0,0,0,0,0]],[24398,[255,23,0,0,0,0,0,0,0,0]],[25461,[255,23,0,0,0,0,0,0,0,0]],[26390,[255,23,0,0,0,0,0,0,0,0]],[27722,[255,23,0,0,0,0,0,0,0,0]],[28682,[255,23,0,0,0,0,0,0,0,0]],[29710,[255,17,32,0,0,0,0,0,0,0]],[30949,[255,17,32,0,0,0,0,0,0,0]],[32063,[255,17,32,0,0,0,0,0,0,0]],[33127,[255,17,32,0,0,0,0,0,0,0]],[34231,[255,17,32,0,0,0,0,0,0,0]],[35315,[255,17,32,0,0,0,0,0,0,0]],[36337,[255,17,32,0,0,0,0,0,0,0]],[37082,[255,17,32,0,0,0,0,0,0,0]],[37567,[255,17,32,0,0,0,0,0,0,0]],[38548,[255,19,32,0,0,0,0,0,0,0]],[39033,[255,19,32,0,0,0,0,0,0,0]],[40767,[255,19,32,0,0,0,0,0,0,0]],[41913,[255,19,32,0,0,0,0,0,0,0]],[43028,[255,19,32,0,0,0,0,0,0,0]],[43410,[255,19,32,0,0,0,0,0,0,0]],[43885,[255,19,32,0,0,0,0,0,0,0]],[44700,[255,19,32,0,0,0,0,0,0,0]],[45216,[255,19,32,0,0,0,0,0,0,0]],[46176,[255,19,32,0,0,0,0,0,0,0]],[47425,[255,23,0,0,0,0,0,0,0,0]],[48518,[255,23,0,0,0,0,0,0,0,0]],[49581,[255,23,0,0,0,0,0,0,0,0]],[50654,[255,23,0,0,0,0,0,0,0,0]],[51759,[255,23,0,0,0,0,0,0,0,0]],[52801,[255,23,0,0,0,0,0,0,0,0]],[53916,[255,23,0,0,0,0,0,0,0,0]],[54990,[255,23,0,0,0,0,0,0,0,0]],[56049,[255,17,32,0,0,0,0,0,0,0]],[57153,[255,17,32,0,0,0,0,0,0,0]],[58248,[255,17,32,0,0,0,0,0,0,0]],[59311,[255,17,32,0,0,0,0,0,0,0]],[60415,[255,17,32,0,0,0,0,0,0,0]],[61437,[255,17,32,0,0,0,0,0,0,0]],[62531,[255,17,32,0,0,0,0,0,0,0]],[63667,[255,17,32,0,0,0,0,0,0,0]],[64710,[255,19,32,0,0,0,0,0,0,0]],[65938,[255,19,32,0,0,0,0,0,0,0]],[67053,[255,19,32,0,0,0,0,0,0,0]],[67930,[255,19,32,0,0,0,0,0,0,0]],[68188,[255,19,32,0,0,0,0,0,0,0]],[69169,[255,19,32,0,0,0,0,0,0,0]],[70294,[255,19,32,0,0,0,0,0,0,0]],[71306,[255,19,32,0,0,0,0,0,0,0]],[72359,[255,19,32,0,0,0,0,0,0,0]],[73380,[255,19,32,0,0,0,0,0,0,0]],[74485,[255,19,32,0,0,0,0,0,0,0]],[75559,[255,19,32,0,0,0,0,0,0,0]],[76673,[255,23,0,0,0,0,0,0,0,0]],[77933,[255,23,0,0,0,0,0,0,0,0]],[79068,[255,23,0,0,0,0,0,0,0,0]],[80107,[255,23,0,0,0,0,0,0,0,0]],[81211,[255,23,0,0,0,0,0,0,0,0]],[82316,[255,23,0,0,0,0,0,0,0,0]],[83317,[255,23,0,0,0,0,0,0,0,0]],[84380,[255,23,0,0,0,0,0,0,0,0]],[85501,[255,17,32,0,0,0,0,0,0,0]],[85986,[255,17,32,0,0,0,0,0,0,0]],[87225,[255,17,32,0,0,0,0,0,0,0]],[87721,[255,17,32,0,0,0,0,0,0,0]],[88753,[255,17,32,0,0,0,0,0,0,0]],[89981,[255,17,32,0,0,0,0,0,0,0]],[90404,[255,17,32,0,0,0,0,0,0,0]],[91684,[255,17,32,0,0,0,0,0,0,0]],[92211,[255,17,32,0,0,0,0,0,0,0]],[93245,[255,17,32,0,0,0,0,0,0,0]],[94391,[255,19,32,0,0,0,0,0,0,0]],[95434,[255,19,32,0,0,0,0,0,0,0]],[96486,[255,19,32,0,0,0,0,0,0,0]],[97508,[255,19,32,0,0,0,0,0,0,0]],[98582,[255,19,32,0,0,0,0,0,0,0]],[99594,[255,19,32,0,0,0,0,0,0,0]],[100653,[255,19,32,0,0,0,0,0,0,0]],[102686,[255,19,32,0,0,0,0,0,0,0]],[102996,[255,19,32,0,0,0,0,0,0,0]],[103336,[255,19,32,0,0,0,0,0,0,0]],[103687,[255,19,32,0,0,0,0,0,0,0]],[104059,[255,19,32,0,0,0,0,0,0,0]],[110808,[255,19,32,0,0,0,0,0,0,0]]]}];
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const hex = a => a.map(b => b.toString(16).toUpperCase().padStart(2, "0")).join(" ");
+const fmt = s => { s = Math.max(0, s || 0); return Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0"); };
+const fmtD = s => fmt(s) + "." + Math.floor((s % 1) * 10);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("itw." + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("itw." + k, JSON.stringify(v)); } catch (e) { } }
+};
+function log(msg) { const el = $("log"); const line = document.createElement("div"); line.textContent = new Date().toLocaleTimeString() + "  " + msg; el.prepend(line); while (el.childNodes.length > 300) el.lastChild.remove(); }
+const nib = v => Math.round(v / 17); // 0-255 -> 0-15
+function hexToRgb(h) { return [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)); }
+function nibToCss(b, g, r) { return `rgb(${r * 17},${g * 17},${b * 17})`; }
+const frame = (cmd, ...p) => { const a = [0xFF, cmd, ...p]; while (a.length < 10) a.push(0); return a.slice(0, 10); };
+const colorFrame = (hexColor, save) => { const [r, g, b] = hexToRgb(hexColor); return frame(save ? 0x18 : 0x28, 0xFE, nib(b), nib(g), nib(r)); };
+
+/* ---------- serial ---------- */
+let port = null, writer = null, queue = [], pumping = false;
+const SPACING = 25; // ms between frames
+function setStatus(on, text) { $("dot").classList.toggle("on", on); $("status").textContent = text; $("btnConnect").disabled = on; $("btnDisconnect").disabled = !on; }
+async function connect() {
+  if (!("serial" in navigator)) { $("noSerial").style.display = "block"; return; }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 9600 });
+    writer = port.writable.getWriter();
+    setStatus(true, "Connected");
+    log("Connected to serial port");
+    port.addEventListener("disconnect", () => { cleanup(); log("Port disconnected"); });
+  } catch (e) { log("Connect failed: " + e.message); setStatus(false, "Not connected — " + e.message); }
+}
+async function cleanup() {
+  try { writer && writer.releaseLock(); } catch (e) { }
+  try { port && await port.close(); } catch (e) { }
+  port = writer = null; queue = []; setStatus(false, "Not connected");
+}
+let lastWrite = 0, lastBright = 100, skipped = 0;
+function send(bytes, why, live = false) {
+  if (!bytes) return;
+  if (bytes[1] === 0x04) lastBright = bytes[2];
+  queue.push({ bytes, why, live, at: performance.now() });
+  if (queue.length > 40) queue.splice(0, queue.length - 40); // never let a backlog build
+  pump();
+}
+async function pump() {
+  if (pumping) return; pumping = true;
+  while (queue.length) {
+    const { bytes, why, live, at } = queue.shift();
+    // show cues that are already late (the link stalled) are dropped, so the lights rejoin the music instead of replaying a burst
+    if (live && writer && performance.now() - at > 250 && bytes[1] !== 0x04) { skipped++; continue; }
+    if (skipped) { log(`Skipped ${skipped} late cue(s) after a Bluetooth delay`); skipped = 0; }
+    if (writer) {
+      const t0 = performance.now();
+      try { await writer.write(new Uint8Array(bytes)); lastWrite = performance.now(); const dt = lastWrite - t0;
+        log((why ? why + "  " : "") + hex(bytes) + (dt > 500 ? `   ⚠ Bluetooth link was slow: ${(dt / 1000).toFixed(1)} s` : "")); }
+      catch (e) { log("Write failed: " + e.message); }
+    } else log("(not connected) " + (why ? why + "  " : "") + hex(bytes));
+    await new Promise(r => setTimeout(r, SPACING));
+  }
+  pumping = false;
+}
+// keep the Bluetooth link from dozing off between songs: quietly re-send the current brightness (no visible change)
+setInterval(async () => {
+  if (!writer || pumping || !$("keepAwake").checked || performance.now() - lastWrite < 1500) return;
+  pumping = true;
+  try { await writer.write(new Uint8Array(frame(0x04, lastBright, 1))); lastWrite = performance.now(); } catch (e) { }
+  pumping = false; if (queue.length) pump();
+}, 500);
+$("btnConnect").onclick = connect;
+$("btnDisconnect").onclick = () => { cleanup(); log("Disconnected"); };
+if (!("serial" in navigator)) $("noSerial").style.display = "block";
+
+/* ---------- effects catalogue ---------- */
+const FX = [
+  { id: "fx10", b: [0x10], star: 1 }, { id: "fx11", b: [0x11, 0x20], star: 1 }, { id: "fx12", b: [0x12], star: 1 },
+  { id: "fx13a", b: [0x13, 0x20, 0x01], star: 1 }, { id: "fx13b", b: [0x13, 0x20, 0x00], star: 1 }, { id: "fx13c", b: [0x13, 0x00], star: 1 },
+  { id: "fx13d", b: [0x13, 0x30, 0x01], star: 1 }, { id: "fx14", b: [0x14], star: 1 }, { id: "fx15", b: [0x15], star: 1 },
+  { id: "fx16", b: [0x16], star: 1 }, { id: "fx17", b: [0x17], star: 1 }, { id: "fx19", b: [0x19], star: 1 },
+  { id: "fx1b", b: [0x1B], star: 1 }, { id: "fx1c", b: [0x1C, 0x05], star: 1 }, { id: "fx1e3", b: [0x1E, 0x03], star: 1 },
+  { id: "fx1e4", b: [0x1E, 0x04], star: 1 }, { id: "fx30", b: [0x30], star: 1 },
+  { id: "pat21", b: [0x21] }, { id: "pat22", b: [0x22] }, { id: "pat23", b: [0x23] }, { id: "pat24", b: [0x24] },
+  { id: "pat25", b: [0x25] }, { id: "pat26", b: [0x26] }, { id: "pat27", b: [0x27] },
+  { id: "fx0e", b: [0x0E] }, { id: "fx0f", b: [0x0F] }, { id: "fx1d", b: [0x1D, 0x10] }, { id: "fx1f", b: [0x1F] },
+  { id: "fx31", b: [0x31] }, { id: "fx32", b: [0x32] }, { id: "fx33", b: [0x33] },
+  { id: "col07", b: [0x07], color: 1 }, { id: "col08", b: [0x08], color: 1 }, { id: "col0b", b: [0x0B], color: 1 },
+  { id: "col0c", b: [0x0C], color: 1 }, { id: "col0d", b: [0x0D], color: 1 }
+];
+const DEFAULT_NAMES = { fx13a: "Effect 13·A", fx13b: "Effect 13·B", fx13c: "Effect 13·C", fx13d: "Effect 13·D", fx1e3: "Effect 1E·3", fx1e4: "Effect 1E·4" };
+let fxNames = store.get("fxNames", {});
+const fxName = f => fxNames[f.id] || DEFAULT_NAMES[f.id] || (f.id.startsWith("pat") ? "Pattern " : f.color ? "Color FX " : "Effect ") + f.b[0].toString(16).toUpperCase().padStart(2, "0");
+function fxFrame(f, colorHex) {
+  if (f.color) { const [r, g, b] = hexToRgb(colorHex || "#ff0000"); return frame(f.b[0], nib(b), nib(g), nib(r)); }
+  return frame(...f.b);
+}
+function labelFor(bytes) {
+  if (!bytes || bytes[0] !== 0xFF) return "Raw";
+  if (bytes[1] === 0x28 || bytes[1] === 0x18) return "Color";
+  if (bytes[1] === 0x04) return "Brightness " + bytes[2];
+  const f = FX.find(f => f.color ? f.b[0] === bytes[1] : f.b.every((v, i) => bytes[1 + i] === v) && bytes.slice(1 + f.b.length).every(v => v === 0));
+  return f ? fxName(f) : "Cmd " + bytes[1].toString(16).toUpperCase();
+}
+function cueColorCss(bytes) {
+  if (bytes[1] === 0x28 || bytes[1] === 0x18) return nibToCss(bytes[3], bytes[4], bytes[5]);
+  const f = FX.find(f => f.color && f.b[0] === bytes[1]);
+  if (f) return nibToCss(bytes[2], bytes[3], bytes[4]);
+  const h = (bytes[1] * 47 + (bytes[2] || 0) * 13) % 360; return `hsl(${h},65%,60%)`;
+}
+
+function buildFxGrid() {
+  const g = $("fxGrid"); g.innerHTML = "";
+  FX.forEach(f => {
+    const b = document.createElement("button"); b.className = "fx";
+    b.innerHTML = `${f.star ? "★ " : ""}<span>${fxName(f)}</span><small>${hex(frame(...f.b)).slice(3, 11)}</small>`;
+    b.onclick = () => send(fxFrame(f, $("color").value), fxName(f));
+    b.ondblclick = () => { const n = prompt("Name this effect:", fxName(f)); if (n) { fxNames[f.id] = n; store.set("fxNames", fxNames); buildFxGrid(); buildPalette(); renderCues(); } };
+    g.appendChild(b);
+  });
+}
+buildFxGrid();
+
+/* control tab */
+$("btnColor").onclick = () => send(colorFrame($("color").value, $("saveColor").checked), "Color");
+["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#ffaa00", "#ff00ff", "#00ffff", "#ffff00"].forEach(c => {
+  const b = document.createElement("button"); b.style.cssText = `background:${c};width:34px;height:26px;padding:0`; b.title = c;
+  b.onclick = () => { $("color").value = c; send(colorFrame(c, false), "Color"); }; $("quickColors").appendChild(b);
+});
+let dimT = 0;
+$("dim").oninput = e => { $("dimVal").textContent = e.target.value; clearTimeout(dimT); dimT = setTimeout(() => send(frame(0x04, +e.target.value, 1), "Brightness"), 60); };
+$("dim").onchange = e => setTimeout(() => send(frame(0x04, +e.target.value, 0), "Brightness (save)"), 400);
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll("main section").forEach(s => s.classList.toggle("active", s.id === b.dataset.tab));
+  if (b.dataset.tab === "editor") drawWave();
+});
+
+/* ---------- songs from APK / MP3 ---------- */
+const songs = []; // {name, url, idx (1-7 or null), file}
+async function readApk(file) {
+  // Minimal ZIP reader: walk the central directory; the songs are stored uncompressed.
+  const buf = await file.arrayBuffer(); const dv = new DataView(buf); const u8 = new Uint8Array(buf);
+  let eocd = -1; for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error("Not a zip/APK file");
+  const n = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true); const out = [];
+  const dec = new TextDecoder();
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + nl));
+    if (/^assets\/iTwinkleMusic\/G\/\d-.*\.mp3$/i.test(name) && csize > 0) {
+      const lnl = dv.getUint16(lho + 26, true), lxl = dv.getUint16(lho + 28, true); const start = lho + 30 + lnl + lxl;
+      let data = u8.slice(start, start + csize);
+      if (method === 8) data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+      out.push({ name, blob: new Blob([data], { type: "audio/mpeg" }) });
+    }
+    p += 46 + nl + xl + cl;
+  }
+  return out;
+}
+function addSong(fileName, blob) {
+  const m = fileName.split("/").pop().match(/^(\d)-(.*)\.\w+$/);
+  const idx = m ? +m[1] : null;
+  const name = m ? m[2].replace("Hight", "High") : fileName.replace(/\.\w+$/, "");
+  if (idx && songs.some(s => s.idx === idx)) return;
+  if (!idx && songs.some(s => s.name === name)) return;
+  songs.push({ name, file: fileName.split("/").pop(), idx: idx && idx <= 7 ? idx : null, url: URL.createObjectURL(blob), blob });
+  songs.sort((a, b) => (a.idx || 99) - (b.idx || 99));
+  songDB.put(fileName.split("/").pop(), blob);
+}
+/* songs persist in IndexedDB so saved shows still play after the page is closed */
+const songDB = (() => {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => { try { const r = indexedDB.open("itwinkle-songs", 1); r.onupgradeneeded = () => r.result.createObjectStore("songs"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+  return {
+    async put(key, blob) { try { const db = await open(); db.transaction("songs", "readwrite").objectStore("songs").put(blob, key); } catch (e) { log("Couldn't store song: " + e.message); } },
+    async all() { try { const db = await open(); return await new Promise(res => { const out = [], tx = db.transaction("songs").objectStore("songs").openCursor(); tx.onsuccess = () => { const c = tx.result; if (c) { out.push([c.key, c.value]); c.continue(); } else res(out); }; tx.onerror = () => res(out); }); } catch (e) { return []; } },
+    async del(key) { try { const db = await open(); db.transaction("songs", "readwrite").objectStore("songs").delete(key); } catch (e) { } }
+  };
+})();
+$("apkFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  $("songMsg").textContent = "Reading…";
+  try { const list = await readApk(f); list.forEach(s => addSong(s.name, s.blob)); $("songMsg").textContent = `Loaded ${list.length} songs.`; renderSongs(); }
+  catch (err) { $("songMsg").textContent = "Couldn't read that file: " + err.message; }
+};
+$("mp3Files").onchange = e => { [...e.target.files].forEach(f => addSong(f.name, f)); $("songMsg").textContent = `Loaded ${e.target.files.length} file(s).`; renderSongs(); };
+
+function renderSongs() {
+  const L = $("songList"); L.innerHTML = "";
+  BUILTIN.forEach(show => {
+    const s = songs.find(x => x.idx === show.idx);
+    const d = document.createElement("div"); d.className = "song"; d.id = "song" + show.idx;
+    d.innerHTML = `<div><b>${show.idx}. ${show.name}</b><div class="t">${show.cues.length} light cues${s ? "" : " · song not loaded"}</div></div>`;
+    const b = document.createElement("button"); b.textContent = "▶"; b.disabled = !s; b.onclick = () => playList(builtinItems(), builtinItems().findIndex(x => x.show.idx === show.idx));
+    d.appendChild(b); L.appendChild(d);
+  });
+  const sel = $("eSong"); const cur = sel.value; sel.innerHTML = '<option value="">— choose a song —</option>';
+  songs.forEach((s, i) => { const o = document.createElement("option"); o.value = i; o.textContent = (s.idx ? s.idx + ". " : "") + s.name; sel.appendChild(o); });
+  sel.value = cur;
+  renderMyShows();
+}
+function renderMyShows() {
+  const L = $("myList"); if (!L) return; L.innerHTML = "";
+  const list = store.get("shows", []);
+  if (!list.length) { L.innerHTML = '<span class="note" style="grid-column:1/-1">No saved shows yet. In the Show editor, generate or build a show and click <b>Save show</b>.</span>'; return; }
+  list.forEach((o, i) => {
+    const s = songs.find(x => x.name === o.song);
+    const d = document.createElement("div"); d.className = "song"; d.id = "my" + i;
+    d.innerHTML = `<div><b>${o.name.replace(/</g, "&lt;")}</b><div class="t">${o.song.replace(/</g, "&lt;")} · ${o.cues.length} cues${s ? "" : " · load this song's MP3 to play"}</div></div>`;
+    const btns = document.createElement("div"); btns.style.cssText = "display:flex;gap:6px";
+    const play = document.createElement("button"); play.textContent = "▶"; play.title = "Play"; play.disabled = !s;
+    play.onclick = () => playList(myItems(), myItems().findIndex(x => x.show.elId === "my" + i));
+    const edit = document.createElement("button"); edit.textContent = "✎"; edit.title = "Open in the Show editor";
+    edit.onclick = () => { document.querySelector('#tabs button[data-tab=editor]').click(); openShow(o); };
+    const del = document.createElement("button"); del.textContent = "🗑"; del.title = "Delete this show";
+    del.onclick = () => { if (!confirm(`Delete the show "${o.name}"? This can't be undone (export it first if you want a copy).`)) return; const l = store.get("shows", []); l.splice(i, 1); store.set("shows", l); refreshSaved(); renderMyShows(); };
+    btns.append(play, edit, del); d.appendChild(btns); L.appendChild(d);
+  });
+}
+renderSongs();
+songDB.all().then(items => { items.forEach(([k, b]) => addSong(k, b)); if (items.length) { $("songMsg").textContent = `${items.length} song(s) remembered from last time.`; } renderSongs(); });
+
+/* ---------- built-in show player ---------- */
+const audio = new Audio(); audio.preload = "auto";
+let playing = null, cueIdx = 0, rafId = 0;
+$("lead").oninput = e => { $("leadVal").textContent = e.target.value; store.set("lead", +e.target.value); };
+$("lead").value = store.get("lead", 120); $("leadVal").textContent = $("lead").value;
+$("wake").oninput = e => { $("wakeVal").textContent = (e.target.value / 1000) + " s"; store.set("wake", +e.target.value); };
+$("wake").value = store.get("wake", 0); $("wakeVal").textContent = ($("wake").value / 1000) + " s";
+$("keepAwake").checked = store.get("keepAwake", true); $("keepAwake").onchange = e => store.set("keepAwake", e.target.checked);
+let startToken = 0;
+// wake the tree, wait the chosen delay, then start the music
+function startWithWake(fn) {
+  const tok = ++startToken, d = +$("wake").value;
+  send(frame(0x04, lastBright, 1), "Wake-up");
+  if (!d || !writer) { fn(); return; }
+  const prev = $("pName").textContent; $("pName").textContent = "Waking the tree…";
+  setTimeout(() => { if (tok === startToken) { $("pName").textContent = prev; fn(); } }, d);
+}
+function seekIdx(cues, ms) { let lo = 0, hi = cues.length; while (lo < hi) { const m = (lo + hi) >> 1; if (cues[m][0] < ms) lo = m + 1; else hi = m; } return lo; }
+function playShow(show, song) {
+  stopShow(); stopEditor();
+  playing = show; audio.src = song.url; audio.currentTime = 0; cueIdx = 0;
+  document.querySelectorAll(".song").forEach(x => x.classList.remove("playing")); const el = $(show.elId || "song" + show.idx); el && el.classList.add("playing");
+  $("pName").textContent = show.name; $("pPlay").disabled = $("pStop").disabled = false;
+  const label = $("pName").textContent;
+  startWithWake(() => { if (playing !== show) return; send(frame(0x04, 100, 1), "Brightness"); audio.play(); $("pPlay").textContent = "❚❚ Pause"; tick(); });
+}
+function tick() {
+  if (!playing) return;
+  const ms = audio.currentTime * 1000 + (+$("lead").value);
+  const c = playing.cues;
+  while (cueIdx < c.length && c[cueIdx][0] <= ms) { if (ms - c[cueIdx][0] < 400) send(c[cueIdx][1], labelFor(c[cueIdx][1]), true); cueIdx++; }
+  $("pFill").style.width = (audio.duration ? audio.currentTime / audio.duration * 100 : 0) + "%";
+  $("pTime").textContent = fmt(audio.currentTime) + " / " + fmt(audio.duration);
+  rafId = requestAnimationFrame(tick);
+}
+function stopShow() { startToken++; if (!playing) return; audio.pause(); cancelAnimationFrame(rafId); playing = null; $("pPlay").textContent = "▶ Play"; document.querySelectorAll(".song").forEach(x => x.classList.remove("playing")); $("pName").textContent = "Nothing playing"; }
+$("pPlay").onclick = () => { if (!playing) return; if (audio.paused) { audio.play(); $("pPlay").textContent = "❚❚ Pause"; } else { audio.pause(); $("pPlay").textContent = "▶ Play"; } };
+$("pStop").onclick = () => { stopShow(); list = []; listPos = -1; $("pPlay").disabled = $("pStop").disabled = $("pPrev").disabled = $("pNext").disabled = true; };
+$("pBar").onclick = e => { if (!playing || !audio.duration) return; const r = e.currentTarget.getBoundingClientRect(); audio.currentTime = (e.clientX - r.left) / r.width * audio.duration; cueIdx = seekIdx(playing.cues, audio.currentTime * 1000); };
+audio.addEventListener("ended", () => { if (playing) { if (!nextInList(true)) stopShow(); } if (ed.playing) stopEditor(); });
+/* ---------- playlists ---------- */
+let list = [], listPos = -1;
+function builtinItems() { return BUILTIN.map(show => ({ show, song: songs.find(x => x.idx === show.idx) })).filter(x => x.song); }
+function myItems() { return store.get("shows", []).map((o, i) => ({ show: { idx: "my" + i, elId: "my" + i, name: o.name, cues: o.cues }, song: songs.find(x => x.name === o.song) })).filter(x => x.song); }
+function shuffled(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function playList(items, start) {
+  if (!items.length) { alert("Nothing to play yet. Load the iTwinkle APK (for the built-in shows) or save a show in the Show editor."); return; }
+  if ($("pShuffle").checked) { if (start === undefined) items = shuffled(items); else { const first = items[start]; items = [first, ...shuffled(items.filter(x => x !== first))]; } start = 0; }
+  start = Math.max(0, start || 0);
+  list = items; listPos = start; playItem();
+}
+function playItem() {
+  const it = list[listPos]; playShow(it.show, it.song);
+  if (list.length > 1) $("pName").textContent = `${it.show.name}  (${listPos + 1} of ${list.length})`;
+  $("pPrev").disabled = $("pNext").disabled = list.length < 2;
+}
+function nextInList(auto) {
+  if (!list.length) return false;
+  if (listPos + 1 < list.length) listPos++;
+  else if ($("pRepeat").checked || !auto) { if ($("pShuffle").checked) list = shuffled(list); listPos = 0; }
+  else return false;
+  playItem(); return true;
+}
+$("pNext").onclick = () => nextInList(false);
+$("pPrev").onclick = () => { if (!list.length) return; if (audio.currentTime > 3) { audio.currentTime = 0; cueIdx = 0; return; } listPos = (listPos - 1 + list.length) % list.length; playItem(); };
+$("plBuiltin").onclick = () => playList(builtinItems());
+$("plMine").onclick = () => playList(myItems());
+$("plAll").onclick = () => playList(builtinItems().concat(myItems()));
+
+/* ---------- editor ---------- */
+const ed = { song: null, url: null, buffer: null, peaks: null, duration: 0, cues: [], sel: -1, playing: false, rec: false, idx: 0, raf: 0, palSel: 0, name: "" };
+const KEYS = "1234567890QWERTYUIOP".split("");
+let PAL = [];
+function buildPalette() {
+  PAL = [{ id: "color", name: "Color", color: true }].concat(FX.filter(f => f.star || f.id.startsWith("pat")).map(f => ({ id: f.id, name: fxName(f), f })));
+  const g = $("palGrid"); g.innerHTML = "";
+  PAL.forEach((p, i) => {
+    const b = document.createElement("button"); b.className = "fx" + (i === ed.palSel ? " sel" : "");
+    b.innerHTML = `${p.name}${KEYS[i] ? `<span class="key">${KEYS[i]}</span>` : ""}<small>${p.color ? "uses cue color" : hex(frame(...p.f.b)).slice(3, 11)}</small>`;
+    b.onclick = () => { ed.palSel = i; buildPalette(); if (!ed.playing) { const by = palBytes(i); send(by, "Preview " + p.name); preview(by); } };
+    g.appendChild(b);
+  });
+}
+function palBytes(i) { const p = PAL[i]; return p.color ? colorFrame($("eColor").value, false) : fxFrame(p.f, $("eColor").value); }
+buildPalette();
+
+$("eFile").onchange = e => { const f = e.target.files[0]; if (!f) return; addSong(f.name, f); renderSongs(); $("eSong").value = songs.findIndex(s => s.blob === f); };
+$("eLoad").onclick = async () => {
+  const s = songs[+$("eSong").value]; if (!s || $("eSong").value === "") { alert("Choose a song first (load the APK on the Built-in shows tab, or pick an audio file)."); return; }
+  await loadEditorSong(s);
+  const mode = $("eStart").value;
+  if (mode === "builtin") { const b = BUILTIN.find(x => x.idx === s.idx); ed.cues = b ? b.cues.map(c => ({ t: c[0] / 1000, b: c[1].slice() })) : []; if (!b) alert("That song has no built-in show; starting blank."); }
+  else if (mode === "auto") { ed.cues = []; afterLoad(); await runAuto(true); }
+  else ed.cues = [];
+  ed.name = s.name + (mode === "builtin" ? " (my version)" : " show"); $("eName").value = ed.name;
+  afterLoad();
+};
+async function loadEditorSong(s) {
+  stopShow(); stopEditor();
+  ed.song = s.name; ed.url = s.url;
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  ed.buffer = await ac.decodeAudioData(await s.blob.arrayBuffer()); ac.close();
+  ed.duration = ed.buffer.duration; ed.analysis = null; ed.levels = null;
+  const ch = ed.buffer.getChannelData(0), N = Math.ceil(ed.duration * 100); ed.peaks = new Float32Array(N);
+  const step = Math.floor(ch.length / N);
+  for (let i = 0; i < N; i++) { let m = 0; for (let j = i * step, e = j + step; j < e; j += 4) { const v = Math.abs(ch[j]); if (v > m) m = v; } ed.peaks[i] = m; }
+}
+function afterLoad() {
+  ed.sel = -1; ed.cues.sort((a, b) => a.t - b.t);
+  ["ePlay", "eRec", "eAddAt", "eSave", "eExport", "eClear", "aGen", "aVar"].forEach(id => $(id).disabled = false); if (!ed.analysis) $("aInfo").textContent = "Ready — click Generate show.";
+  audio.src = ed.url; audio.currentTime = 0; drawWave(); renderCues();
+}
+
+/* ---------- auto-choreographer UI ---------- */
+const AUTO_FX = FX.filter(f => f.star);
+let autoEnabled = store.get("autoFx", AUTO_FX.map(f => f.id));
+function buildAutoFx() {
+  const box = $("aFx"); box.innerHTML = "";
+  AUTO_FX.forEach(f => {
+    const b = document.createElement("button"); const on = autoEnabled.includes(f.id);
+    b.textContent = fxName(f); b.style.cssText = "padding:4px 9px;font-size:12px;" + (on ? "border-color:var(--accent);color:var(--ink)" : "opacity:.45;text-decoration:line-through");
+    b.title = on ? "Click to stop using this effect" : "Click to use this effect";
+    b.onclick = () => { autoEnabled = on ? autoEnabled.filter(x => x !== f.id) : autoEnabled.concat(f.id); store.set("autoFx", autoEnabled); buildAutoFx(); };
+    box.appendChild(b);
+  });
+}
+buildAutoFx();
+let autoSeed = 1;
+async function runAuto(fresh) {
+  if (!ed.buffer) return;
+  if (fresh) autoSeed = 1;
+  $("aGen").disabled = $("aVar").disabled = true;
+  if (!ed.analysis) {
+    ed.analysis = await AUTO.analyze(ed.buffer, p => { $("aInfo").textContent = "Listening to the song… " + Math.round(p * 100) + "%"; });
+  }
+  const A = ed.analysis;
+  const res = AUTO.generate(A, { fx: FX, frame, enabled: autoEnabled, style: +$("aStyle").value, brightness: $("aBright").checked, accents: $("aAccent").checked, repeatLooks: $("aRepeat").checked, seed: autoSeed });
+  ed.levels = res.levels; ed.cues = res.cues; ed.sel = -1; ed.idx = cueSeek(audio.currentTime);
+  const names = ["calm", "gentle", "steady", "driving", "peak"]; const styleName = ["Calm", "Balanced", "Energetic", "Classic"][+$("aStyle").value];
+  $("aInfo").textContent = `${Math.round(A.bpm)} BPM in ${A.meter}/4 · ${A.beats.length} beats · ${A.onsets.length} note hits · ${A.sections.length} sections (${res.levels.map(l => names[l]).join(", ")}) · ${res.cues.length} cues · ${styleName} · variation ${autoSeed}`;
+  $("aGen").disabled = $("aVar").disabled = false;
+  renderCues(); drawWave();
+}
+$("aGen").onclick = () => runAuto(false);
+$("aVar").onclick = () => { autoSeed++; runAuto(false); };
+
+/* waveform */
+const cv = $("wave"), cx = cv.getContext("2d");
+function pxs() { return +$("eZoom").value; }
+function drawWave() {
+  if (!ed.peaks) { cv.width = $("waveWrap").clientWidth || 600; cx.fillStyle = "#8fa59a"; cx.font = "13px system-ui"; cx.clearRect(0, 0, cv.width, cv.height); cx.fillText("Load a song into the editor to see its waveform.", 14, 80); return; }
+  const W = Math.max($("waveWrap").clientWidth, Math.ceil(ed.duration * pxs())), H = cv.height; cv.width = W;
+  cx.fillStyle = "#0d1512"; cx.fillRect(0, 0, W, H);
+  // seconds grid
+  cx.fillStyle = "#2a3d35"; cx.font = "10px system-ui";
+  for (let s = 0; s < ed.duration; s += (pxs() < 50 ? 10 : 5)) { const x = s * pxs(); cx.fillRect(x, 0, 1, H); cx.fillStyle = "#5d7368"; cx.fillText(fmt(s), x + 3, 11); cx.fillStyle = "#2a3d35"; }
+  if (ed.analysis) {
+    const lvlCol = ["#2f5f8f", "#3f8f7f", "#8f8f3f", "#c07a2f", "#d0453a"];
+    ed.analysis.sections.forEach((S, i) => { const x0 = S.t0 * pxs(), x1 = S.t1 * pxs(); cx.fillStyle = lvlCol[(ed.levels || [])[i] ?? 2]; cx.fillRect(x0, H - 7, x1 - x0 - 1, 7); });
+    if (pxs() >= 60) { cx.fillStyle = "#24362e"; ed.analysis.beats.forEach(t => cx.fillRect(t * pxs(), H - 12, 1, 5)); }
+  }
+  cx.fillStyle = "#3f6b55"; const mid = H / 2 + 6;
+  for (let x = 0; x < W; x++) { const i = Math.floor(x / pxs() * 100); const v = ed.peaks[i] || 0; const h = v * (H / 2 - 16); cx.fillRect(x, mid - h, 1, h * 2 || 1); }
+  ed.cues.forEach((c, i) => { const x = c.t * pxs(); cx.fillStyle = cueColorCss(c.b); cx.fillRect(x - 1, 16, i === ed.sel ? 4 : 2, H - 16); if (i === ed.sel) { cx.strokeStyle = "#e2b44b"; cx.strokeRect(x - 3, 15, 8, H - 15); } });
+  const px = audio.currentTime * pxs(); cx.fillStyle = "#e2b44b"; cx.fillRect(px, 0, 2, H);
+}
+$("eZoom").oninput = drawWave;
+window.addEventListener("resize", drawWave);
+let drag = null;
+cv.onmousedown = e => {
+  if (!ed.peaks) return; const r = cv.getBoundingClientRect(), x = e.clientX - r.left;
+  const hit = ed.cues.findIndex(c => Math.abs(c.t * pxs() - x) < 5);
+  if (hit >= 0) { ed.sel = hit; drag = { i: hit }; renderCues(); preview(ed.cues[hit].b); }
+  else { audio.currentTime = x / pxs(); ed.idx = cueSeek(audio.currentTime); }
+  drawWave();
+};
+cv.onmousemove = e => { if (!drag) return; const r = cv.getBoundingClientRect(); ed.cues[drag.i].t = Math.max(0, Math.min(ed.duration, (e.clientX - r.left) / pxs())); drawWave(); };
+window.addEventListener("mouseup", () => { if (drag) { const c = ed.cues[drag.i]; ed.cues.sort((a, b) => a.t - b.t); ed.sel = ed.cues.indexOf(c); drag = null; renderCues(); drawWave(); } });
+
+function cueSeek(t) { let i = 0; while (i < ed.cues.length && ed.cues[i].t < t) i++; return i; }
+function startEditor() {
+  stopShow(); audio.src !== ed.url && (audio.src = ed.url);
+  ed.idx = cueSeek(audio.currentTime); ed.playing = true; $("ePlay").textContent = "❚❚ Pause";
+  startWithWake(() => { if (!ed.playing) return; audio.play(); edTick(); });
+}
+function stopEditor() { if (!ed.playing) return; ed.playing = false; ed.rec = false; audio.pause(); cancelAnimationFrame(ed.raf); $("ePlay").textContent = "▶ Play"; $("eRec").textContent = "● Record taps"; $("eRec").classList.remove("primary"); }
+function edTick() {
+  if (!ed.playing) return;
+  const t = audio.currentTime + (+$("lead").value) / 1000;
+  while (ed.idx < ed.cues.length && ed.cues[ed.idx].t <= t) { const c = ed.cues[ed.idx]; if ($("eSend").checked && t - c.t < 0.4) send(c.b, labelFor(c.b), true); preview(c.b); ed.idx++; }
+  $("eTime").textContent = fmtD(audio.currentTime);
+  const wrap = $("waveWrap"), px = audio.currentTime * pxs(); if (px > wrap.scrollLeft + wrap.clientWidth - 60 || px < wrap.scrollLeft) wrap.scrollLeft = px - 60;
+  drawWave(); ed.raf = requestAnimationFrame(edTick);
+}
+$("ePlay").onclick = () => ed.playing ? stopEditor() : startEditor();
+$("eRec").onclick = () => { if (ed.rec) { stopEditor(); return; } ed.rec = true; $("eRec").textContent = "■ Stop recording"; $("eRec").classList.add("primary"); if (!ed.playing) startEditor(); };
+function addCue(t, bytes) { const c = { t, b: bytes }; ed.cues.push(c); ed.cues.sort((a, b) => a.t - b.t); ed.sel = ed.cues.indexOf(c); if (ed.playing && c.t < audio.currentTime) ed.idx = cueSeek(audio.currentTime); renderCues(); drawWave(); }
+$("eAddAt").onclick = () => addCue(audio.currentTime, palBytes(ed.palSel));
+document.addEventListener("keydown", e => {
+  if (!document.getElementById("editor").classList.contains("active") || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) && e.target.type !== "range" && e.target.type !== "checkbox") return;
+  if (e.code === "Space") { e.preventDefault(); if (ed.peaks) $("ePlay").click(); return; }
+  if ((e.key === "Delete" || e.key === "Backspace") && ed.sel >= 0) { ed.cues.splice(ed.sel, 1); ed.sel = -1; renderCues(); drawWave(); return; }
+  const k = KEYS.indexOf(e.key.toUpperCase());
+  if (k >= 0 && k < PAL.length && ed.peaks) {
+    ed.palSel = k; buildPalette(); const by = palBytes(k);
+    if (ed.rec) { addCue(audio.currentTime, by); send(by, "Tap " + PAL[k].name); preview(by); }
+    else { send(by, "Preview " + PAL[k].name); preview(by); }
+  }
+});
+function renderCues() {
+  const tb = $("cueBody"); tb.innerHTML = "";
+  ed.cues.forEach((c, i) => {
+    const tr = document.createElement("tr"); if (i === ed.sel) tr.className = "sel";
+    tr.innerHTML = `<td class="mono">${fmtD(c.t)}</td><td><span class="swatch" style="background:${cueColorCss(c.b)}"></span>${labelFor(c.b)}</td><td class="mono muted">${hex(c.b.slice(1, 6))}</td>`;
+    const td = document.createElement("td"); const del = document.createElement("button"); del.textContent = "✕"; del.style.padding = "2px 8px";
+    del.onclick = ev => { ev.stopPropagation(); ed.cues.splice(i, 1); ed.sel = -1; renderCues(); drawWave(); };
+    td.appendChild(del); tr.appendChild(td);
+    tr.onclick = () => { ed.sel = i; audio.currentTime = c.t; ed.idx = cueSeek(c.t); renderCues(); drawWave(); preview(c.b); };
+    tb.appendChild(tr);
+  });
+  $("eCount").textContent = ed.cues.length + " cues";
+  const selRow = tb.querySelector("tr.sel"); selRow && selRow.scrollIntoView({ block: "nearest" });
+}
+$("eClear").onclick = () => { if (confirm("Remove every cue from this show?")) { ed.cues = []; ed.sel = -1; renderCues(); drawWave(); } };
+
+/* clear the editor (the song itself stays remembered) */
+$("eClearSong").onclick = () => {
+  if (!ed.peaks && !$("eSong").value) return;
+  if (ed.cues.length && !confirm("Clear the editor? Any changes you haven't saved with Save show will be lost. The song itself stays in your list.")) return;
+  stopEditor(); audio.pause(); audio.removeAttribute("src"); audio.load();
+  Object.assign(ed, { song: null, url: null, buffer: null, peaks: null, duration: 0, cues: [], sel: -1, idx: 0, analysis: null, levels: null, name: "" });
+  $("eSong").value = ""; $("eName").value = ""; $("eTime").textContent = "0:00.0"; $("treeLabel").textContent = "—";
+  ["ePlay", "eRec", "eAddAt", "eSave", "eExport", "eClear", "aGen", "aVar"].forEach(id => $(id).disabled = true);
+  $("aInfo").textContent = "Load a song into the editor first.";
+  renderCues(); drawWave();
+};
+/* Classic never changes brightness: grey out that option while it's selected */
+function syncStyleOpts() { const classic = $("aStyle").value === "3"; $("aBright").disabled = classic; $("aBright").parentElement.style.opacity = classic ? 0.45 : 1; $("aAccent").parentElement.lastChild.textContent = classic ? " Flash between effect runs" : " Accents on big hits"; }
+$("aStyle").addEventListener("change", syncStyleOpts); syncStyleOpts();
+
+/* save / load */
+function showObj() { return { app: "itwinkle-show-studio", version: 1, name: $("eName").value || "Untitled show", song: ed.song, cues: ed.cues.map(c => [Math.round(c.t * 1000), c.b]) }; }
+function refreshSaved() { const list = store.get("shows", []); const s = $("eSaved"); s.innerHTML = '<option value="">—</option>'; list.forEach((x, i) => { const o = document.createElement("option"); o.value = i; o.textContent = x.name + " · " + x.song; s.appendChild(o); }); }
+refreshSaved();
+$("eSave").onclick = () => { const o = showObj(); const list = store.get("shows", []); const i = list.findIndex(x => x.name === o.name); if (i >= 0) list[i] = o; else list.push(o); store.set("shows", list); refreshSaved(); renderMyShows(); log("Saved show: " + o.name); $("eSave").textContent = "Saved ✓ — now under Built-in shows → My shows"; setTimeout(() => $("eSave").textContent = "Save show", 2500); };
+$("eExport").onclick = () => { const o = showObj(); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(o)], { type: "application/json" })); a.download = o.name.replace(/[^\w\- ]+/g, "") + ".itwshow.json"; a.click(); };
+async function openShow(o) {
+  const s = songs.find(x => x.name === o.song);
+  if (!s) { alert(`This show is for "${o.song}". Load that song first (Built-in shows tab, or "Use another audio file"), then open it again.`); return; }
+  await loadEditorSong(s); ed.cues = o.cues.map(c => ({ t: c[0] / 1000, b: c[1] })); $("eName").value = o.name; afterLoad();
+}
+$("eOpen").onclick = () => { const i = $("eSaved").value; if (i !== "") openShow(store.get("shows", [])[+i]); };
+$("eImport").onclick = () => $("eImportFile").click();
+$("eImportFile").onchange = async e => { const f = e.target.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()); const l = store.get("shows", []); if (!l.some(x => x.name === o.name)) { l.push(o); store.set("shows", l); refreshSaved(); renderMyShows(); } openShow(o); } catch (err) { alert("That isn't a show file."); } };
+
+/* preview tree */
+const svg = $("treeSvg"); const bulbs = [];
+(function buildTree() {
+  let html = '<polygon points="85,12 150,200 20,200" fill="#16301f" stroke="#264d33"/><rect x="76" y="200" width="18" height="22" fill="#4a3322"/>';
+  for (let r = 0; r < 9; r++) { const y = 30 + r * 19, half = 8 + r * 7.2, n = 2 + r; for (let i = 0; i < n; i++) { const x = 85 - half + (n === 1 ? half : i * (2 * half) / (n - 1)); html += `<circle class="bulb" cx="${x.toFixed(1)}" cy="${y}" r="3.6" fill="#333"/>`; } }
+  svg.innerHTML = html; svg.querySelectorAll(".bulb").forEach(b => bulbs.push(b));
+})();
+let prevColor = "#ffffff", prevAnim = 0;
+function preview(bytes) {
+  const lab = labelFor(bytes); $("treeLabel").textContent = lab;
+  if (bytes[1] === 0x28 || bytes[1] === 0x18 || FX.some(f => f.color && f.b[0] === bytes[1])) { prevColor = cueColorCss(bytes); bulbs.forEach(b => b.setAttribute("fill", prevColor)); return; }
+  // effect: a short animated sparkle in the effect's signature hue + current color
+  const hue = cueColorCss(bytes); clearInterval(prevAnim); let n = 0;
+  prevAnim = setInterval(() => { bulbs.forEach((b, i) => b.setAttribute("fill", (i + n + (bytes[1] * 3)) % 4 === 0 ? hue : (i + n) % 3 === 0 ? prevColor : "#1d2b22")); if (++n > 18) clearInterval(prevAnim); }, 90);
+}
+
+/* ---------- music reactive ---------- */
+let lCtx = null, lStream = null, lRaf = 0;
+$("lMic").onclick = async () => {
+  try {
+    lStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    lCtx = new AudioContext(); const src = lCtx.createMediaStreamSource(lStream); const an = lCtx.createAnalyser(); an.fftSize = 1024; src.connect(an);
+    $("lMic").disabled = true; $("lStop").disabled = false; runLive(an);
+  } catch (e) { alert("Microphone not available: " + e.message); }
+};
+$("lStop").onclick = () => { cancelAnimationFrame(lRaf); lStream && lStream.getTracks().forEach(t => t.stop()); lCtx && lCtx.close(); lCtx = null; $("lMic").disabled = false; $("lStop").disabled = true; };
+function runLive(an) {
+  const data = new Uint8Array(an.frequencyBinCount), hist = [], mc = $("lMeter").getContext("2d");
+  let lastBeat = 0, fi = 0, ci = 0;
+  const fxSet = ["fx10", "fx14", "fx15", "fx19", "fx1b", "fx30", "fx13a", "fx16"].map(id => FX.find(f => f.id === id));
+  const cols = ["#ff0000", "#00ff00", "#0000ff", "#ffffff", "#ffaa00", "#ff00ff"];
+  (function loop() {
+    an.getByteFrequencyData(data);
+    let bass = 0; for (let i = 1; i < 12; i++) bass += data[i]; bass /= 11;
+    hist.push(bass); if (hist.length > 60) hist.shift();
+    const avg = hist.reduce((a, b) => a + b, 0) / hist.length;
+    const thr = avg * (1 + (21 - $("lSens").value) / 25) + 4, now = performance.now();
+    const W = 600, H = 60; mc.clearRect(0, 0, W, H); mc.fillStyle = "#3f6b55"; mc.fillRect(0, H - bass / 255 * H, W * 0.7, bass / 255 * H); mc.fillStyle = "#e2b44b"; mc.fillRect(0, H - thr / 255 * H, W * 0.7, 2);
+    if (bass > thr && now - lastBeat > +$("lGap").value) {
+      lastBeat = now; mc.fillStyle = "#e05a4f"; mc.fillRect(W * 0.75, 10, 40, 40);
+      const m = $("lMode").value;
+      if (m !== "color") { const f = fxSet[fi++ % fxSet.length]; send(frame(...f.b), "Beat " + fxName(f)); }
+      if (m !== "fx") send(colorFrame(cols[ci++ % cols.length], false), "Beat color");
+    }
+    lRaf = requestAnimationFrame(loop);
+  })();
+}
+
+/* raw */
+$("rawSend").onclick = () => { const b = $("rawHex").value.trim().split(/[\s,]+/).map(x => parseInt(x, 16)).filter(x => !isNaN(x) && x >= 0 && x < 256); if (b.length) send(b, "Raw"); };
+drawWave();
+window.__itw = { AUTO, FX, frame, BUILTIN };
+</script>
+</body>
+</html>
